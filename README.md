@@ -14,58 +14,61 @@ run using:
 
 # Game process
 
-    MENU
-    1. play
-    2. select level
-    3. quit
+MENU
+1. play
+2. select level
+3. quit
 
 
-    -----------------
-    |r b r r r b b r|
-    |b b b b b b b  |
-    | B   r         |
-    |               |
-    |               |
-    |               |
-        angle = 0
+-----------------
+|r b r r r b b r|
+|b b b b b b b  |
+| B   r         |
+|               |
+|               |
+|               |
+    angle = 0
 
-    ## TODO: GAME_INIT
+## TODO: GAME_INIT
 
-    `g_o_t game = {...,load(bullet.txt), ...}`
+`g_o_t game = {...,load(bullet.txt), ...}`
 
-    bullet.txt
-            /``\
-            \../
-            ####
-            rrrr
-            rwrr
-            ####
-            rrrr
-            rrrr
+bullet.txt
 
 
-    ## TODO: BULLET_READY
 
-    KEY_A, KEY_D --> `angle_rad += (+/-)0.01`
+        /``\
+        \../
+        ####
+        rrrr
+        rwrr
+        ####
+        rrrr
+        rrrr
 
-    straight line function: `y=mx+c` 
 
-    SPACE --> change state(BULLET_FIRED)
+## TODO: BULLET_READY
 
-    ## TODO: BULLET_FIRED
+KEY_A, KEY_D --> `angle_rad += (+/-)0.01`
 
-    double v = 0.05 /sec
+straight line function: `y=mx+c` 
 
-    time() - old_time > 0.5
-    posx += sin(angle)*v
-    x = b1x - posx
-    y = b1y -posy
-    r = sqrt(x^2 + y^2)
-    if(r<v) -->change state(BULLET_HIT)
-    old_time = time()
+SPACE --> change state(BULLET_FIRED)
 
-    ## TODO: BULLET_HIT
+## TODO: BULLET_FIRED
 
-    score = count(number of bubbles popped)
-    if(masih ada bubble) change state(BULLET_FIRED)
-    else change state(GAME_END)
+double v = 0.05 /sec
+
+time() - old_time > 0.5
+posx += sin(angle)*v
+x = b1x - posx
+y = b1y -posy
+r = sqrt(x^2 + y^2)
+if(r<v) -->change state(BULLET_HIT)
+old_time = time()
+
+## TODO: BULLET_HIT
+
+score = count(number of bubbles popped)
+if(masih ada bubble) change state(BULLET_FIRED)
+else change state(GAME_END)
