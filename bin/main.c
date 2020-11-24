@@ -45,7 +45,7 @@ int main()
                 keypad(win, false);
                 wclear(win);
                 wattrset(win, COLOR_PAIR(1));
-                sprintf(str, "-----------------\n|     Arrozy    |\n| ncurses Demo %d|\n-----------------\n\n", 1);
+                sprintf(str, "-----------------\n|     -test-    |\n| ncurses Demo %d|\n-----------------\n\n", 1);
                 waddstr(win, str);
                 waddstr(win, "\nType any string you want...\n");
                 wrefresh(win);
