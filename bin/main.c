@@ -2,7 +2,14 @@
 
 int main()
 {
+    FILE *bullet_sprite = fopen("bullet.txt", "r");
+    int i = 0;
     char str[256] = "";
+    char c = '\0';
+    while(i < 4)
+    {
+        c = fgetc(bullet_sprite);
+    }
     initscr();
     cbreak();
     if (has_colors())
@@ -10,7 +17,7 @@ int main()
         if (start_color() == OK)
         {
             init_pair(1, COLOR_YELLOW, COLOR_RED);
-            init_pair(2, COLOR_GREEN, COLOR_GREEN);
+            init_pair(2, COLOR_GREEN, COLOR_BLUE);
             init_pair(3, COLOR_MAGENTA, COLOR_CYAN);
 
             attrset(COLOR_PAIR(1));
@@ -19,7 +26,7 @@ int main()
             attroff(COLOR_PAIR(1));
 
             attrset(COLOR_PAIR(2) | A_BOLD);
-            addstr("Green and green A_BOLD\n\n");
+            addstr("Green and blue A_BOLD\n\n");
             refresh();
             attroff(COLOR_PAIR(2));
             attroff(A_BOLD);
