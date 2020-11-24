@@ -20,14 +20,14 @@ MENU
 3. quit
 
 
-    -----------------
-    |r b r r r b b r|
-    |b b b b b b b  |
-    | B   r         |
-    |               |
-    |               |
-    |               |
-        angle = 0
+            -----------------
+            |r b r r r b b r|
+            |b b b b b b b  |
+            | B   r         |
+            |               |
+            |               |
+            |               |
+                angle = 0
 
 ## TODO: GAME_INIT
 
