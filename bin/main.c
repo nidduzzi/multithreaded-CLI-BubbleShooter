@@ -13,10 +13,10 @@ int main()
             init_pair(2, COLOR_GREEN, COLOR_GREEN);
             init_pair(3, COLOR_MAGENTA, COLOR_CYAN);
 
-            attrset(COLOR_PAIR(1));
+            attrset(COLOR_PAIR(2));
             addstr("Yellow and red\n\n");
             refresh();
-            attroff(COLOR_PAIR(1));
+            attroff(COLOR_PAIR(2));
 
             attrset(COLOR_PAIR(2) | A_BOLD);
             addstr("Green and green A_BOLD\n\n");
