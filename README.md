@@ -14,10 +14,10 @@ run using:
 
 # Game process
 
-    MENU
-    1. play
-    2. select level
-    3. quit
+MENU
+1. play
+2. select level
+3. quit
 
 
     -----------------
@@ -29,11 +29,11 @@ run using:
     |               |
         angle = 0
 
-    ## TODO: GAME_INIT
+## TODO: GAME_INIT
 
     `g_o_t game = {...,load(bullet.txt), ...}`
 
-    bullet.txt
+bullet.txt
             /``\
             \../
             ####
@@ -44,15 +44,13 @@ run using:
             rrrr
 
 
-    ## TODO: BULLET_READY
+## TODO: BULLET_READY
 
-    KEY_A, KEY_D --> `angle_rad += (+/-)0.01`
+    KEY_A, KEY_D --> `angle_rad += (+/-)0.01`   
+    straight line function: `y=mx+c`   
+    SPACE --> change state(BULLET_FIRED)   
 
-    straight line function: `y=mx+c` 
-
-    SPACE --> change state(BULLET_FIRED)
-
-    ## TODO: BULLET_FIRED
+## TODO: BULLET_FIRED
 
     double v = 0.05 /sec
 
@@ -64,7 +62,7 @@ run using:
     if(r<v) -->change state(BULLET_HIT)
     old_time = time()
 
-    ## TODO: BULLET_HIT
+## TODO: BULLET_HIT
 
     score = count(number of bubbles popped)
     if(masih ada bubble) change state(BULLET_FIRED)
