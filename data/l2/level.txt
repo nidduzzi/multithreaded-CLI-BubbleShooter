@@ -1,0 +1,7 @@
+y y y y y y y y
+ y x y   b x b
+  y y     b b
+   r   x   r
+o o o o o o o o
+   g g g g g
+####
