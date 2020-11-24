@@ -9,7 +9,7 @@ int main()
     {
         if (start_color() == OK)
         {
-            init_pair(1, COLOR_YELLOW, COLOR_RED);
+            init_pair(1, COLOR_BLACK, COLOR_RED);
             init_pair(2, COLOR_GREEN, COLOR_GREEN);
             init_pair(3, COLOR_MAGENTA, COLOR_CYAN);
 
