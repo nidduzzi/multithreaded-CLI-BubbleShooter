@@ -46,11 +46,13 @@ typedef struct game_object_t
     int score;
     l_d_t level_design;
     b_t bullet;
+    char **bubble_sprite;
     //...
 } g_o_t;
 
 void setGameInternalState(g_o_t *game, g_is_t state);
 void loadGameAssets(g_o_t *game, asset_addr_t);
+void textLoader(char address[], char ***dest);
 // ...
 
 #endif
