@@ -45,16 +45,12 @@ int main()
                 keypad(win, false);
                 wclear(win);
                 wattrset(win, COLOR_PAIR(1));
-                sprintf(str, "-----------------\n|     LEVEL 1    |\n| ncurses Demo %d|\n-----------------\n\n r r r r r r r r\n  x b b b r b b\n y y y y b b b b\n   o o   b b\n    o     b\n", 1);
-
+                sprintf(str, "-----------------\n|     -test-    |\n| ncurses Demo %d|\n-----------------\n\n", 1);
                 waddstr(win, str);
                 waddstr(win, "\nType any string you want...\n");
                 wrefresh(win);
                 wgetnstr(win, str, 255);
                 wmove(win, 10, 10);
-
-                
-
                 
                 waddstr(win, str);
                 waddstr(win, "\npress any key to exit...");
@@ -62,7 +58,6 @@ int main()
                 wgetch(win);
                 wattroff(win, COLOR_PAIR(1));
                 delwin(win);
-
             }
             else
             {
