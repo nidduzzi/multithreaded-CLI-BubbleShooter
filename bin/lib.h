@@ -7,6 +7,7 @@
 #include <sys/time.h>
 #include <pthread.h>
 #include <malloc.h>
+#include <string.h>
 
 typedef enum game_internal_state_t
 {
@@ -52,7 +53,7 @@ typedef struct game_object_t
 
 void setGameInternalState(g_o_t *game, g_is_t state);
 void loadGameAssets(g_o_t *game, asset_addr_t);
-void textLoader(char address[], char ***dest);
+void textLoader(char address[], char ***dest, int *maxrow, int *maxline);
 // ...
 
 #endif

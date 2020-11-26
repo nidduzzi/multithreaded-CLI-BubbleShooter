@@ -50,9 +50,14 @@ int main()
                 waddstr(win, "\nType any string you want...\n");
                 wrefresh(win);
                 wgetnstr(win, str, 255);
-                wmove(win, 10, 10);
-                
+                wmove(win, 0, 0);
+                strcat(str, "\n");
                 waddstr(win, str);
+                int maxline = 0, maxrow = 0, i;
+                char **tmp;
+                textLoader("../data/l1/level.txt", &tmp, &maxrow, &maxline);
+                for(i = 0; i < maxline; ++i) waddstr(win, tmp[i]);
+
                 waddstr(win, "\npress any key to exit...");
                 wrefresh(win);
                 wgetch(win);
