@@ -65,5 +65,5 @@ bullet.txt
 ## TODO: BULLET_HIT
 
     score = count(number of bubbles popped)
-    if(masih ada bubble) change state(BULLET_FIRED)
+    if(masih ada bubble) change state(BULLET_READY)
     else change state(GAME_END)
