@@ -56,3 +56,7 @@ score = number of bubbles popped
 if(masih ada bubble) change state(BULLET_FIRED)
 else change state(GAME_END)
 
+/``\/``\/``\/``\/``\/``\/``\/``\
+\../\../\../\../\../\../\../\../
+  /``\/``\/``\/``\/``\/``\/``\
+  \../\../\../\../\../\../\../

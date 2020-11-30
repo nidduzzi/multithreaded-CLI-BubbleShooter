@@ -1,5 +1,6 @@
 #ifndef LIB_H
 #define LIB_H
+#define _GNU_SOURCE
 #include <ncurses.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -8,6 +9,8 @@
 #include <pthread.h>
 #include <malloc.h>
 #include <string.h>
+#include <locale.h>
+// #include <sys/queue.h>
 
 typedef enum game_internal_state_t
 {
@@ -15,45 +18,95 @@ typedef enum game_internal_state_t
     BULLET_READY, // Bullet has been initialized (color/type set) and waiting for player to aim and shoot bullet --> update state to BULLET_FIRED after player fires bullet
     BULLET_FIRED, /* Player has set bullet angle and fired the bullet --> update positon and reflect angle if barrier is hit --> update state to BULLET_HIT when distance to any bubble is less than update displacement*/
     BULLET_HIT,   /* Bullet has hit a bubble --> comprison of bullet and bubble color --> destroy bubbles if 3 same color are adjacent --> destroy bubbles not connected to original layout --> Count score --> rng get next bullet type --> update state to BULLET_READY*/
-    GAME_END
-} g_is_t;
+    GAME_END,
+    GAME_ERROR
+} gameIs_t;
 
-typedef struct assetF_addr_t
+typedef enum bubble_color_type
 {
-    char *bgF_addr;
-    char *bubbleF_addr;
-    char *bubble_layoutF_addr;
-    char *arrowF_addr;
-} asset_addr_t;
+    BUBBLE_RED,
+    BUBBLE_BLUE,
+    BUBBLE_GREEN,
+    BUBBLE_YELLOW,
+    BUBBLE_ORANGE,
+    BUBBLE_WHITE,
+    BUBBLE_BLACK
+} bc_t;
 
-typedef struct level_design_t
+typedef struct sprite_type
 {
-    char **bubble_layout;
-    char **bg;
-    char **arrow;
-} l_d_t;
+    char **data;
+    int maxline;
+    int maxcol;
+} sprite_t;
 
-typedef struct bullet_t
+typedef struct level_assets_type
+{
+    sprite_t bg;
+    sprite_t layout;
+    sprite_t bubble;
+    sprite_t arrow;
+} la_t;
+
+typedef struct bullet_type
 {
     double x;
     double y;
     double angle_rad;
     double speed;
+    bc_t color;
 } b_t;
 
-typedef struct game_object_t
-{
-    g_is_t _state;
-    int score;
-    l_d_t level_design;
-    b_t bullet;
-    char **bubble_sprite;
-    //...
-} g_o_t;
+typedef struct bubble_type *bubbleptr_t;
 
-void setGameInternalState(g_o_t *game, g_is_t state);
-void loadGameAssets(g_o_t *game, asset_addr_t);
-void textLoader(char address[], char ***dest, int *maxrow, int *maxline);
+typedef struct bubble_type
+{
+    double x;
+    double y;
+    bc_t color;
+    int player_bubble;
+    bubbleptr_t sibling[6];
+} bubble_t;
+
+typedef struct target_type
+{
+    bubble_t *bubble;
+    int num;
+} target_t;
+
+typedef struct game_object_type
+{
+    gameIs_t state;
+    int score;
+    la_t assets;
+    b_t bullet;
+    target_t targets;
+    //...
+} game_o_t;
+
+typedef struct textLoaderArgs_type
+{
+    char addr[30];
+    char ***dest;
+    int *maxcol;
+    int *maxline;
+} tLoaderArg_t;
+
+typedef struct errorbuffer_type
+{
+    char *buffer;
+    int size;
+    int num;
+} errorbuffer_t;
+
+errorbuffer_t errbuffer;
+
+int errbuff(const char *s, ...);
+int game_loop(int level);
+int textLoader(char address[], char ***dest, int *maxcol, int *maxline);
+int loadAssets(game_o_t *game, int level);
+void *fwrapper_textLoader(void *args);
+void setGameInternalState(game_o_t *game, gameIs_t state);
 // ...
 
 #endif
