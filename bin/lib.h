@@ -10,7 +10,8 @@
 #include <malloc.h>
 #include <string.h>
 #include <locale.h>
-// #include <sys/queue.h>
+#include <errno.h>
+#include <sys/queue.h>
 
 typedef enum game_internal_state_t
 {
@@ -24,11 +25,13 @@ typedef enum game_internal_state_t
 
 typedef enum bubble_color_type
 {
+    BUBBLE_NONE,
     BUBBLE_RED,
     BUBBLE_BLUE,
     BUBBLE_GREEN,
     BUBBLE_YELLOW,
-    BUBBLE_ORANGE,
+    BUBBLE_CYAN,
+    BUBBLE_MAGENTA,
     BUBBLE_WHITE,
     BUBBLE_BLACK
 } bc_t;
@@ -64,25 +67,8 @@ typedef struct bubble_type
     double x;
     double y;
     bc_t color;
-    int player_bubble;
-    bubbleptr_t sibling[6];
+    int modified;
 } bubble_t;
-
-typedef struct target_type
-{
-    bubble_t *bubble;
-    int num;
-} target_t;
-
-typedef struct game_object_type
-{
-    gameIs_t state;
-    int score;
-    la_t assets;
-    b_t bullet;
-    target_t targets;
-    //...
-} game_o_t;
 
 typedef struct textLoaderArgs_type
 {
@@ -99,12 +85,65 @@ typedef struct errorbuffer_type
     int num;
 } errorbuffer_t;
 
-errorbuffer_t errbuffer;
+errorbuffer_t errbuffer; // Global variable for buffering printf
 
+typedef struct elmt* alamatelmt;
+
+typedef struct elmt
+{
+    bubble_t kontainer;
+    alamatelmt next;
+}elemen;
+
+typedef struct
+{
+    elemen* first;
+}list;
+
+typedef struct target_type
+{
+    list bubbles;
+    int num;
+} target_t;
+
+typedef struct window_attributes_type
+{
+    WINDOW *win;
+    int cols;
+    int lines;
+} wattr_t;
+
+typedef struct game_object_type
+{
+    gameIs_t state;
+    int score;
+    la_t assets;
+    b_t bullet;
+    target_t targets;
+    int activeCtypes[8];
+    int num_activeCtypes;
+    wattr_t wattr;
+    //...
+} game_o_t;
+
+// list function prototypes
+void copyElement(bubble_t *a, bubble_t *b);
+void createList(list *L);
+int countElement(list L);
+void addFirst(bubble_t src, list *L);
+void addAfter(elemen* prev, bubble_t src, list *L);
+void addLast(bubble_t src, list *L);
+void delFirst(list *L);
+void delAfter(elemen* prev, list *L);
+void delLast(list *L);
+void printElement(list L);
+void delAll(list *L);
+// game function prototypes
 int errbuff(const char *s, ...);
-int game_loop(int level);
+int game_loop(WINDOW *win, int level);
+void drawbubble(WINDOW *win, bubble_t bubble, sprite_t sprite);
 int textLoader(char address[], char ***dest, int *maxcol, int *maxline);
-int loadAssets(game_o_t *game, int level);
+int loadAssetsFromFile(game_o_t *game, int level);
 void *fwrapper_textLoader(void *args);
 void setGameInternalState(game_o_t *game, gameIs_t state);
 // ...

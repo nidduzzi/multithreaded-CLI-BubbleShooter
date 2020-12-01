@@ -1,5 +1,8 @@
 r r r r r r r r
  x b b b r b b 
 y y y y b b b b
-   o o   b b   
-    o     b    
+   c c   b b   
+    c     b    
+
+       w
+      b b

@@ -7,27 +7,27 @@ typedef struct
 {
     char str[50];
     char n[50];
-} container;
-typedef struct elm *alamatelmt;
-typedef struct elm
+} q_container;
+typedef struct q_elm *q_elmtptr;
+typedef struct q_elm
 {
-    container kontainer;
-    alamatelmt next;
-} elemen;
+    q_container kontainer;
+    q_elmtptr next;
+} q_elemen;
 typedef struct
 {
-    elemen *first;
-    elemen *last;
+    q_elemen *first;
+    q_elemen *last;
 } queue;
 
-void copyContainer(container *dest, container *src);
-void createEmpty(queue *Q);
-int isEmpty(queue Q);
-int countElement(queue Q);
-void add(container src, queue *Q);
-void addPriority(container src, int priority, queue *Q);
-void transferElement(elemen *src, queue *srcQ, queue *destQ);
-void del(queue *Q);
+void copyContainer(q_container *dest, q_container *src);
+void createEmptyQueue(queue *Q);
+int isQueueEmpty(queue Q);
+int countQueueElement(queue Q);
+void addQelement(q_container src, queue *Q);
+void addQelementPriority(q_container src, int priority, queue *Q);
+void transferQelement(q_elemen *src, queue *srcQ, queue *destQ);
+void delqueue(queue *Q);
 void printQueue(queue Q);
 
 #endif

@@ -1,14 +1,14 @@
 #include "queue.h"
 
-void copyContainer(container *dest, container *src)
+void copyContainer(q_container *dest, q_container *src)
 {
     strcpy(dest->str, src->str);
     strcpy(dest->n, src->n);
 }
 
-elemen *getPrev(elemen *ptr, queue *Q)
+q_elemen *getPrev(q_elemen *ptr, queue *Q)
 {
-    elemen *cptr = Q->first, *prev = NULL;
+    q_elemen *cptr = Q->first, *prev = NULL;
     while (cptr != NULL)
     {
         if(cptr == ptr)
@@ -21,13 +21,13 @@ elemen *getPrev(elemen *ptr, queue *Q)
     return prev;
 }
 
-void createEmpty(queue *Q)
+void createEmptyQueue(queue *Q)
 {
     (*Q).first = NULL;
     (*Q).last = NULL;
 }
 
-int isEmpty(queue Q)
+int isQueueEmpty(queue Q)
 {
     int hasil = 0;
     if (Q.first == NULL)
@@ -37,13 +37,13 @@ int isEmpty(queue Q)
     return hasil;
 }
 
-int countElement(queue Q)
+int countQueueElement(queue Q)
 {
     int hasil = 0;
     if (Q.first != NULL)
     {
         /* queue tidak kosong */
-        elemen *bantu;
+        q_elemen *bantu;
         /* inisialisasi */
         bantu = Q.first;
 
@@ -60,10 +60,10 @@ int countElement(queue Q)
     return hasil;
 }
 
-void add(container src, queue *Q)
+void addQelement(q_container src, queue *Q)
 {
-    elemen *baru;
-    baru = (elemen *)malloc(sizeof(elemen));
+    q_elemen *baru;
+    baru = (q_elemen *)malloc(sizeof(q_elemen));
     copyContainer(&(baru->kontainer), &(src));
     baru->next = NULL;
     if ((*Q).first == NULL)
@@ -78,12 +78,12 @@ void add(container src, queue *Q)
     baru = NULL;
 }
 
-void addPriority(container src, int priority, queue *Q)
+void addQelementPriority(q_container src, int priority, queue *Q)
 {
-    elemen *ptr = Q->first, *prev = NULL;
-    if (ptr == NULL || countElement(*Q) < priority)
+    q_elemen *ptr = Q->first, *prev = NULL;
+    if (ptr == NULL || countQueueElement(*Q) < priority)
     {
-        add(src, Q);
+        addQelement(src, Q);
     }
     else
     {
@@ -92,7 +92,7 @@ void addPriority(container src, int priority, queue *Q)
         {
             if (i == priority)
             {
-                elemen *newPtr = (elemen *)malloc(sizeof(elemen));
+                q_elemen *newPtr = (q_elemen *)malloc(sizeof(q_elemen));
                 copyContainer(&(newPtr->kontainer), &(src));
                 if(i == 1)
                 {
@@ -112,9 +112,9 @@ void addPriority(container src, int priority, queue *Q)
     }
 }
 
-void transferElement(elemen *src, queue *srcQ, queue *destQ)
+void transferQelement(q_elemen *src, queue *srcQ, queue *destQ)
 {
-    elemen *prev = getPrev(src, srcQ);
+    q_elemen *prev = getPrev(src, srcQ);
     if(prev == NULL)
     {
         if(src->next == NULL) srcQ->first = NULL;
@@ -137,13 +137,13 @@ void transferElement(elemen *src, queue *srcQ, queue *destQ)
     src->next = NULL;
 }
 
-void del(queue *Q)
+void delqueue(queue *Q)
 {
     if ((*Q).first != NULL)
     {
         /* jika queue bukan queue kosong */
-        elemen *hapus = (*Q).first;
-        if (countElement(*Q) == 1)
+        q_elemen *hapus = (*Q).first;
+        if (countQueueElement(*Q) == 1)
         {
             (*Q).first = NULL;
             (*Q).last = NULL;
@@ -161,7 +161,7 @@ void printQueue(queue Q)
 {
     if (Q.first != NULL)
     {
-        elemen *bantu = Q.first;
+        q_elemen *bantu = Q.first;
         int i = 1;
         while (bantu != NULL)
         {
