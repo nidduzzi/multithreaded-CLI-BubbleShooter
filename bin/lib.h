@@ -11,7 +11,9 @@
 #include <string.h>
 #include <locale.h>
 #include <errno.h>
+#include <math.h>
 #include <sys/queue.h>
+#define PI 3.14159265
 
 typedef enum game_internal_state_t
 {
@@ -36,6 +38,26 @@ typedef enum bubble_color_type
     BUBBLE_BLACK
 } bc_t;
 
+typedef enum draw_object_type
+{
+    DRAW_ALL,
+    DRAW_THIS,
+    DRAW_TARGET,
+    DRAW_BULLET,
+    DRAW_ARROW,
+    DRAW_SCORE,
+    DRAW_CLEAR
+} drawobj_t;
+
+typedef enum draw_state_type
+{
+    DRAW_STATE_INIT,
+    DRAW_STATE_START,
+    DRAW_STATE_END,
+    DRAW_STATE_EXIT,
+    DRAW_STATE_ERROR
+} draw_state_t;
+
 typedef struct sprite_type
 {
     char **data;
@@ -55,7 +77,7 @@ typedef struct bullet_type
 {
     double x;
     double y;
-    double angle_rad;
+    double angle_deg;
     double speed;
     bc_t color;
 } b_t;
@@ -87,23 +109,30 @@ typedef struct errorbuffer_type
 
 errorbuffer_t errbuffer; // Global variable for buffering printf
 
-typedef struct elmt* alamatelmt;
-
-typedef struct elmt
+typedef struct container_bubble_type
 {
-    bubble_t kontainer;
-    alamatelmt next;
-}elemen;
+    bubble_t container;
+    LIST_ENTRY(container_bubble_type) entries;
+} cbubble_t;
 
-typedef struct
+typedef struct container_drawobj_type
 {
-    elemen* first;
-}list;
+    drawobj_t object;
+    TAILQ_ENTRY(container_drawobj_type) entries;
+} cdrawobj_t;
+
+typedef struct container_input_type
+{
+    int c;
+    TAILQ_ENTRY(container_input_type) entries;
+} cinput_t;
 
 typedef struct target_type
 {
-    list bubbles;
+    LIST_HEAD(bubble_list, container_bubble_type) bubbles;
     int num;
+    double x;
+    double y;
 } target_t;
 
 typedef struct window_attributes_type
@@ -111,7 +140,15 @@ typedef struct window_attributes_type
     WINDOW *win;
     int cols;
     int lines;
+    int maxcols;
+    int maxlines;
 } wattr_t;
+
+typedef struct thread_type
+{
+    pthread_t tid;
+    pthread_attr_t attr;
+} thread_t;
 
 typedef struct game_object_type
 {
@@ -120,32 +157,37 @@ typedef struct game_object_type
     la_t assets;
     b_t bullet;
     target_t targets;
-    int activeCtypes[8];
+    int activeCtypes[9];
     int num_activeCtypes;
     wattr_t wattr;
+    pthread_mutex_t game_mutex;
+    pthread_t draw_thread;
+    pthread_cond_t draw_cv;
+    gameIs_t draw_state;
+    pthread_t input_thread;
+    pthread_cond_t input_cv;
+    gameIs_t input_state;
+    pthread_t mechanics_thread;
+    pthread_cond_t mechanics_cv;
+    gameIs_t mechanics_state;
+    int draw_signaled;
+    int input_signaled;
+    int mechanics_signaled;
+    TAILQ_HEAD(draw_queue_t, container_drawobj_type) draw_queue;
+    TAILQ_HEAD(input_queue_t, container_input_type) input_queue;
     //...
 } game_o_t;
 
-// list function prototypes
-void copyElement(bubble_t *a, bubble_t *b);
-void createList(list *L);
-int countElement(list L);
-void addFirst(bubble_t src, list *L);
-void addAfter(elemen* prev, bubble_t src, list *L);
-void addLast(bubble_t src, list *L);
-void delFirst(list *L);
-void delAfter(elemen* prev, list *L);
-void delLast(list *L);
-void printElement(list L);
-void delAll(list *L);
-// game function prototypes
+pthread_mutex_t errbuff_mutex;
+
 int errbuff(const char *s, ...);
-int game_loop(WINDOW *win, int level);
-void drawbubble(WINDOW *win, bubble_t bubble, sprite_t sprite);
 int textLoader(char address[], char ***dest, int *maxcol, int *maxline);
 int loadAssetsFromFile(game_o_t *game, int level);
 void *fwrapper_textLoader(void *args);
-void setGameInternalState(game_o_t *game, gameIs_t state);
+void drawbubble(wattr_t *wattr, bubble_t bubble, sprite_t sprite);
+double lineEq(double x, double m, double c);
+void drawarrow(wattr_t *wattr, double angle, target_t *targets, sprite_t *sprite);
+int game_loop(WINDOW *win, int level);
 // ...
 
 #endif

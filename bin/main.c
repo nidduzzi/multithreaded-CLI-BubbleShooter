@@ -1,138 +1,120 @@
 #include "lib.h"
 
-
 int main()
 {
-    setlocale(LC_ALL, "");
-    initscr();
-    noecho();
-    cbreak();
-    curs_set(0);
-    //addstr("Test ncurses");
 
-    int scrcols = 70, scrlines = 30;
-    int yMax, xMax;
-    WINDOW *win;
-    // set x and y max value
-    getmaxyx(stdscr, yMax, xMax);
-
-    //create window
-    win = newwin(scrlines, scrcols, (yMax / 2) - (scrlines / 2) - (scrlines % 2), (xMax / 2) - (scrcols / 2) - (scrcols % 2));
-    box(win, 0, 0);
-    refresh();
-    wrefresh(win);
-    keypad(win, true);
-
-    char menu[3][50] = {"1-PLAY", "2-SELECT_LEVEL", "3-QUIT"};
-    int choice;
-    int highlight = 0;
-
-    mvwprintw(win, 5, 10, "WELCOME TO CLI BUBBLE SHOOTER");
-    mvwprintw(win, 6, 10, "=============================");
-
-    while (1)
+    int retval = pthread_mutex_init(&(errbuff_mutex), NULL);
+    if (retval)
     {
-        for (int i = 0; i < 3; i++)
-        {
-            if (i == highlight)
-            {
-                wattron(win, A_REVERSE);
-            }
-            mvwprintw(win, i + 9, 15, menu[i]);
-            wattroff(win, A_REVERSE);
-        }
-        choice = wgetch(win);
-        switch (choice)
-        {
-        case KEY_UP:
-            highlight--;
-            if (highlight == -1)
-            {
-                highlight = 0;
-            }
-            break;
-        case KEY_DOWN:
-            highlight++;
-            if (highlight == 3)
-            {
-                highlight = 2;
-            }
-            break;
-        default:
-            break;
-        }
-        if (choice == 10)
-        {
-            break;
-        }
-    }
-    wprintw(win, "Your choices : %s", menu[highlight]);
-    wclear(win);
-    wrefresh(win);
-    if (highlight == 0)
-        game_loop(win, 1);
-    wgetch(win);
-    delwin(win);
-    /*
-    if (has_colors())
-    {
-        if (LINES > 50 || COLS > 1000)
-        {
-            addstr("Terminal too small\n");
-            refresh();
-            getch();
-        }
-        else
-        {
-
-            if (start_color() == OK)
-            {
-                WINDOW *win = newwin(LINES, COLS, 0, 0);
-                keypad(win, true);
-                int row = 2, col = 0, key = 0;
-                noecho();
-                while ((key = wgetch(win)) != (int)'\n')
-                {
-                    switch (key)
-                    {
-                    case KEY_UP:
-                        row -= (row > 1) ? 1 : 0;
-                        break;
-                    case KEY_DOWN:
-                        row += (row < LINES) ? 1 : 0;
-                        break;
-                    case KEY_LEFT:
-                        col -= (col >= 0) ? 1 : 0;
-                        break;
-                    case KEY_RIGHT:
-                        col += (col < COLS) ? 1 : 0;
-                        break;
-                    case KEY_ENTER:
-                        return 0;
-                        break;
-                    default:
-                        break;
-                    }
-                }
-                delwin(win);
-            }
-            else
-            {
-                addstr("Cannot start colours\n");
-                refresh();
-            }
-        }
+        errbuff("Error: pthread_mutex_init(errbuff_mutex) in main() returned: %d\n", retval);
     }
     else
     {
-        addstr("Not colour capable\n");
-        refresh();
-    }
+        setlocale(LC_ALL, "");
+        initscr();
+        noecho();
+        cbreak();
+        curs_set(0);
+        //addstr("Test ncurses");
 
-    */
-    getch();
-    endwin();
-    printf("%s", errbuffer.buffer);
-    free(errbuffer.buffer);
-    return EXIT_SUCCESS;
+        int wincols = 70, winlines = 30;
+        int maxlines, maxcols;
+        WINDOW *win;
+        // set x and y max value
+        getmaxyx(stdscr, maxlines, maxcols);
+
+        //create window
+        if (has_colors())
+        {
+            if (maxlines < winlines || maxcols < wincols)
+            {
+                addstr("Terminal too small\n");
+                refresh();
+                getch();
+            }
+            else
+            {
+                if (start_color() == OK)
+                {
+                    win = newwin(winlines, wincols, (maxlines / 2) - (winlines / 2) - (winlines % 2), (maxcols / 2) - (wincols / 2) - (wincols % 2));
+                    keypad(win, true);
+
+                    char menu[3][50] = {"1-PLAY", "2-SELECT_LEVEL", "3-QUIT"};
+                    int key, ref = 1;
+                    int highlight = 0;
+
+                    while (key != 10 || highlight != 2)
+                    {
+                        if (ref)
+                        {
+                            mvwin(win, (maxlines / 2) - (winlines / 2) - (winlines % 2), (maxcols / 2) - (wincols / 2) - (wincols % 2));
+                            wresize(win, winlines, wincols);
+                            box(win, 0, 0);
+
+                            mvwprintw(win, 5, 10, "WELCOME TO CLI BUBBLE SHOOTER");
+                            mvwprintw(win, 6, 10, "=============================");
+                            ref = 0;
+                        }
+                        for (int i = 0; i < 3; i++)
+                        {
+                            if (i == highlight)
+                            {
+                                wattron(win, A_REVERSE);
+                            }
+                            mvwprintw(win, i + 9, 15, menu[i]);
+                            wattroff(win, A_REVERSE);
+                        }
+                        wrefresh(win);
+                        key = wgetch(win);
+                        switch (key)
+                        {
+                        case KEY_UP:
+                            if (highlight > 0)
+                                highlight--;
+                            break;
+                        case KEY_DOWN:
+                            if (highlight < 2)
+                                highlight++;
+                            break;
+                        case 10:
+                            if (highlight == 0)
+                            {
+                                errbuff("game_loop returned: %d\n", game_loop(win, 1));
+                                ref = 1;
+                            }
+                            else if (highlight == 1)
+                            {
+                                mvwaddstr(win, 1, 1, "Sorry! No game there yet...");
+                                ref = 1;
+                            }
+                            wrefresh(win);
+                            break;
+                        }
+                    }
+                    delwin(win);
+                }
+                else
+                {
+                    clear();
+                    addstr("Cannot start colours\n");
+                    refresh();
+                }
+            }
+        }
+        else
+        {
+            addstr("Terminal not colour capable\n");
+            refresh();
+        }
+        endwin();
+
+        pthread_mutex_destroy(&(errbuff_mutex));
+        if (errbuffer.buffer)
+        {
+            printf("%s", errbuffer.buffer);
+            free(errbuffer.buffer);
+        }
+    }
+    perror("last errno");
+    pthread_exit(NULL);
 }
