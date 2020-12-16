@@ -8,7 +8,7 @@ copy the repo using:
 then move to the bin folder using:  
 `cd multithreaded-CLI-BubbleShooter/bin`  
 compile using:  
-`gcc *.c -Wall -g -o main -lncurses`  
+`gcc -g -Wall *.c -o main.sh -lpthread -lncursesw -lm`  
 run using:  
 `./main`  
 

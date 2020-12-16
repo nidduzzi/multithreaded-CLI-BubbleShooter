@@ -45,7 +45,7 @@ int textLoader(char address[], char ***dest, int *maxcol, int *maxline)
     {
         *maxcol = 0, *maxline = 0;
         (*dest) = (char **)malloc(sizeof(**dest));
-        while (fscanf(fp, "%c", &c) != EOF)
+        while ((c = fgetc(fp)) != EOF)
         {
             if (*dest == NULL)
             {
@@ -275,8 +275,8 @@ void drawbubble(wattr_t *wattr, bubble_t bubble, sprite_t sprite)
         {
             if (sprite.data[i][j] != ' ' && sprite.data[i][j] != '\n')
             {
-                mvwaddch(wattr->win, (bubble.y / 2) - (sprite.maxline / 2) - (sprite.maxline % 2) + i + 1, bubble.x - (sprite.maxcol / 2) - (sprite.maxcol % 2) + j + 1, sprite.data[i][j]);
-                wrefresh(wattr->win);
+                mvwaddch(wattr->win, (int)(bubble.y / 2) - (sprite.maxline / 2) - (sprite.maxline % 2) + i + 1, (int)bubble.x - (sprite.maxcol / 2) - (sprite.maxcol % 2) + j + 1, sprite.data[i][j]);
+                // wrefresh(wattr->win);
             }
         }
     }
@@ -289,62 +289,87 @@ double lineEq(double x, double m, double c)
     return m * x + c;
 }
 
+int collide(wattr_t *wattr, target_t *targets, double x, double y)
+{
+    cbubble_t *cbubbleptr;
+    double bx, by;
+    int retval = 0;
+    LIST_FOREACH(cbubbleptr, &(targets->bubbles), entries)
+    {
+        bx = (((double)wattr->lines - 3) * 2) - (cbubbleptr->container.y);
+        by = (((double)wattr->cols - 2) / 2) - (cbubbleptr->container.x);
+        if (sqrt(pow(((bx - x)), 2) + pow((by - y), 2)) < 4.1)
+        {
+            retval = 1;
+            break;
+        }
+    }
+    return retval;
+}
+
+int bounce(double *x, double *m, double *c, double minY, double maxY)
+{
+    int retval = 0;
+    if ((lineEq(*x, *m, *c) + 2.0) > maxY)
+    {
+        *c = 2 * lineEq(*x, *m, *c);
+        *m = -*m;
+        retval = 1;
+    }
+    else if ((lineEq(*x, *m, *c) - 2.0) < minY)
+    {
+        *c = 2 * lineEq(*x, *m, *c);
+        *m = -*m;
+        retval = 1;
+    }
+    return retval;
+}
+
 void drawarrow(wattr_t *wattr, double angle, target_t *targets, sprite_t *sprite)
 {
-    int touchTarget = 0, line = wattr->lines - 1, col = (wattr->cols / 2) + (wattr->cols % 2) ? 1 : ((angle > 0.0) ? 0 : 1);
+    int touchTarget = 0, line = wattr->lines - 2, col = 1;
     cbubble_t *cbubbleptr;
-    double x = 0.0, y = 0.0, m = tan(angle), c = 0.0, bx, by, leasterror, dotpos[8][2] = {{0.5, 0.2}, {0.5, 0.8}, {0.7, 0.8}, {0.3, 0.8}, {0.7, 0.5}, {0.3, 0.5}, {0.7, 0.2}, {0.3, 0.2}}, cerror;
+    double x = 0.0, y = 0.0, m = tan(angle), c = 0.0, bx, by, leasterror, dotpos[8][2] = {{1.6, 0.5}, {0.4, 0.5}, {1.6, 0.7}, {1.6, 0.3}, {1.0, 0.7}, {1.0, 0.3}, {0.4, 0.7}, {0.4, 0.3}}, cerror;
     int leasterroridx, i;
     while (!touchTarget)
     {
         // reflect the line if it touches the sides of the game box
-        if (lineEq(x, m, c) > (((double)(wattr->cols - 2) / 2)))
-        {
-            m = -m;
-            c = (((double)(wattr->cols - 2)));
-        }
-        else if (lineEq(x, m, c) < -(((double)(wattr->cols - 2) / 2)))
-        {
-            m = -m;
-            c = -(((double)(wattr->cols - 2)));
-        }
+        bounce(&x, &m, &c, -(((double)(wattr->cols - 2) / 2)), (((double)(wattr->cols - 2) / 2)));
         // calculate the next arrow segment column position on the next line
-        col = (int)(((double)wattr->cols / 2) - (ceil(y = lineEq(x, m, c)) + 0.005 /*offset any potential floating point errors*/));
+        col = (int)floor(((double)wattr->cols / 2) - (y = lineEq(x, m, c)) + 0.005 /*offset any potential floating point errors*/);
         // check current distance to the targets
-        LIST_FOREACH(cbubbleptr, &(targets->bubbles), entries)
-        {
-            bx = (((double)wattr->lines - 2) * 2) - (cbubbleptr->container.y);
-            by = (((double)wattr->cols - 2) / 2) - (cbubbleptr->container.x);
-            if (sqrt(pow((bx - x), 2) + pow((by - y), 2)) < 4.1)
-            {
-                touchTarget = 1;
-                break;
-            }
-        }
+        touchTarget = collide(wattr, targets, x, y);
         if (line == 1)
             touchTarget = 1;
         if (touchTarget)
         {
-            mvwaddch(wattr->win, line, col, sprite->data[0][0]);
+            mvwaddstr(wattr->win, line, col, sprite->data[0]);
         }
         else
         {
-            for (i = 0, leasterroridx = 0, leasterror = MAXFLOAT; i < 8; ++i)
+            leasterroridx = 0;
+            for (i = 0, leasterror = MAXFLOAT; i < 8 && m != 0.0; ++i)
             {
-                bx = (dotpos[i][1] + (dotpos[i][0] / m) - c) / (m + (1 / m)); /* Get the intersect coordinates */
+                bx = ((dotpos[i][1] + floor(y)) + ((dotpos[i][0] + floor(x)) / m) - c) / (m + (1 / m)); /* Get the intersect coordinates */
                 by = lineEq(bx, m, c);
                 if (bx < x + 2 && bx > x)
                 {
                     /* Calulate the distance of the braille dot from the line*/
-                    if ((cerror = sqrt(pow(dotpos[i][0] - bx, 2) + pow(dotpos[i][1] - by, 2))) < leasterror)
+                    if ((cerror = sqrt(pow(dotpos[i][0] + floor(x) - bx, 2) + pow(dotpos[i][1] + floor(y) - by, 2))) < leasterror)
                     {
                         leasterror = cerror;
                         leasterroridx = i;
                     }
                 }
             }
-            if (col > 0 && col < wattr->cols && line > 0 && line < wattr->lines)
-                mvwaddch(wattr->win, line, col, sprite->data[leasterroridx / 2 + 1][leasterroridx % 2]);
+            if (col > 0 && col < (wattr->cols - 1) && line > 0 && line < (wattr->lines - 1))
+            {
+                mvwaddstr(wattr->win, line, col, sprite->data[leasterroridx + 1]);
+                // TODO:REMOVE AFTER DEBUG
+                wrefresh(wattr->win);
+                // TODO:REMOVE AFTER DEBUG
+            }
+            leasterroridx = 0;
         }
         --line;
         x += 2;
@@ -370,9 +395,9 @@ void *draw(void *args)
         switch (game->state)
         {
         case BULLET_READY:
+            game->draw_state = BULLET_READY;
             while (game->state == BULLET_READY)
             {
-                game->draw_state = BULLET_READY;
                 if ((*retval = pthread_cond_wait(&(game->draw_cv), &(game->game_mutex))))
                 {
                     game->state = GAME_ERROR;
@@ -380,7 +405,7 @@ void *draw(void *args)
                     errbuff("Error: pthread_cond_wait() in draw() BULLET_READY returned: %d\n", *retval);
                     pthread_mutex_unlock(&(errbuff_mutex));
                 }
-                else
+                else if (game->state == BULLET_READY)
                 {
                     game->draw_signaled = 1;
                     wclear(game->wattr.win);
@@ -390,6 +415,7 @@ void *draw(void *args)
                         drawbubble(&(game->wattr), cbubbleptr->container, game->assets.bubble);
                     }
                     drawarrow(&(game->wattr), game->bullet.angle_deg, &(game->targets), &(game->assets.arrow));
+                    drawbubble(&(game->wattr), (bubble_t){((game->wattr.cols - 2) / 2) - game->bullet.y, ((game->wattr.lines - 3) * 2) - game->bullet.x, game->bullet.color, 0}, game->assets.bubble);
                     wrefresh(game->wattr.win);
                 }
                 pthread_cond_destroy(&(game->draw_cv));
@@ -399,26 +425,60 @@ void *draw(void *args)
 
         case BULLET_FIRED:
             game->draw_state = BULLET_FIRED;
-            pthread_cond_wait(&(game->draw_cv), &(game->game_mutex));
-            if (*retval)
+            while (game->state == BULLET_FIRED)
             {
-                game->state = GAME_ERROR;
-                pthread_mutex_lock(&(errbuff_mutex));
-                errbuff("Error: pthread_cond_wait() in draw() BULLET_FIRED returned: %d\n", *retval);
-                pthread_mutex_unlock(&(errbuff_mutex));
+                if ((*retval = pthread_cond_wait(&(game->draw_cv), &(game->game_mutex))))
+                {
+                    game->state = GAME_ERROR;
+                    pthread_mutex_lock(&(errbuff_mutex));
+                    errbuff("Error: pthread_cond_wait() in draw() BULLET_FIRED returned: %d\n", *retval);
+                    pthread_mutex_unlock(&(errbuff_mutex));
+                }
+                else if (game->state == BULLET_FIRED)
+                {
+                    game->draw_signaled = 1;
+                    wclear(game->wattr.win);
+                    box(game->wattr.win, 0, 0);
+                    LIST_FOREACH(cbubbleptr, &(game->targets.bubbles), entries)
+                    {
+                        drawbubble(&(game->wattr), cbubbleptr->container, game->assets.bubble);
+                    }
+                    drawbubble(&(game->wattr), (bubble_t){((game->wattr.cols - 2) / 2) - game->bullet.y, ((game->wattr.lines - 3) * 2) - game->bullet.x, game->bullet.color, 0}, game->assets.bubble);
+                    wrefresh(game->wattr.win);
+                }
+                pthread_cond_destroy(&(game->draw_cv));
+                pthread_cond_init(&(game->draw_cv), NULL);
             }
-            pthread_cond_destroy(&(game->draw_cv));
-            pthread_cond_init(&(game->draw_cv), NULL);
-            pthread_mutex_unlock(&(game->game_mutex));
             break;
 
         case BULLET_HIT:
             game->draw_state = BULLET_HIT;
-            /* code */
+            if ((*retval = pthread_cond_wait(&(game->draw_cv), &(game->game_mutex))))
+            {
+                game->state = GAME_ERROR;
+                pthread_mutex_lock(&(errbuff_mutex));
+                errbuff("Error: pthread_cond_wait() in draw() BULLET_HIT returned: %d\n", *retval);
+                pthread_mutex_unlock(&(errbuff_mutex));
+            }
+            else if (game->state == BULLET_HIT)
+            {
+            }
+            pthread_cond_destroy(&(game->draw_cv));
+            pthread_cond_init(&(game->draw_cv), NULL);
             break;
 
         default:
             break;
+        }
+        if (game->state != GAME_END || game->state != GAME_ERROR)
+        {
+            *retval = pthread_mutex_unlock(&(game->game_mutex));
+            if (*retval)
+            {
+                pthread_mutex_lock(&(errbuff_mutex));
+                errbuff("Error: pthread_mutex_unlock() in draw() while() after switch (game->state) returned: %d\n", *retval);
+                pthread_mutex_unlock(&(errbuff_mutex));
+            }
         }
     }
     *retval = pthread_mutex_unlock(&(game->game_mutex));
@@ -445,54 +505,58 @@ void *input(void *args)
         errbuff("Error: pthread_mutex_lock() in input() returned: %d\n", *retval);
         pthread_mutex_unlock(&(errbuff_mutex));
     }
+    game->input_state = BULLET_READY;
     while (game->state != GAME_END && game->state != GAME_ERROR)
     {
         switch (game->state)
         {
         case BULLET_READY:
-            game->input_state = BULLET_READY;
-            if ((*retval = pthread_cond_wait(&(game->input_cv), &(game->game_mutex))))
+            if (game->input_state == BULLET_READY)
             {
-                game->state = GAME_ERROR;
-                pthread_mutex_lock(&(errbuff_mutex));
-                errbuff("Error: pthread_cond_wait() in input() BULLET_READY returned: %d\n", *retval);
-                pthread_mutex_unlock(&(errbuff_mutex));
-            }
-            else
-            {
-                if ((*retval = pthread_mutex_unlock(&(game->game_mutex))))
+                if ((*retval = pthread_cond_wait(&(game->input_cv), &(game->game_mutex))))
                 {
                     game->state = GAME_ERROR;
                     pthread_mutex_lock(&(errbuff_mutex));
-                    errbuff("Error: pthread_mutex_unlock() in input() BULLET_READY returned: %d\n", *retval);
+                    errbuff("Error: pthread_cond_wait() in input() BULLET_READY returned: %d\n", *retval);
                     pthread_mutex_unlock(&(errbuff_mutex));
                 }
-                else
+                else if (game->state == BULLET_READY)
                 {
-                    game->input_signaled = 1;
-                    nodelay(game->wattr.win, false);
-                    noecho();
-                    keypad(game->wattr.win, true);
-                    while ((key = wgetch(game->wattr.win)) != 10)
+                    if ((*retval = pthread_mutex_unlock(&(game->game_mutex))))
                     {
+                        game->state = GAME_ERROR;
+                        pthread_mutex_lock(&(errbuff_mutex));
+                        errbuff("Error: pthread_mutex_unlock() in input() BULLET_READY returned: %d\n", *retval);
+                        pthread_mutex_unlock(&(errbuff_mutex));
+                    }
+                    else
+                    {
+                        game->input_signaled = 1;
+                        nodelay(game->wattr.win, false);
+                        noecho();
+                        keypad(game->wattr.win, true);
+                        while ((key = wgetch(game->wattr.win)) != 10)
+                        {
+                            cinputptr = (cinput_t *)malloc(sizeof(cinput_t));
+                            cinputptr->c = key;
+                            TAILQ_INSERT_TAIL(&(game->input_queue), cinputptr, entries);
+                            pthread_cond_signal(&(game->mechanics_cv));
+                        }
+                        // insert the enter into the queue as the last key
                         cinputptr = (cinput_t *)malloc(sizeof(cinput_t));
                         cinputptr->c = key;
                         TAILQ_INSERT_TAIL(&(game->input_queue), cinputptr, entries);
                         pthread_cond_signal(&(game->mechanics_cv));
+                        game->input_signaled = 0;
                     }
-                    // insert the enter into the queue as the last key
-                    cinputptr = (cinput_t *)malloc(sizeof(cinput_t));
-                    cinputptr->c = key;
-                    TAILQ_INSERT_TAIL(&(game->input_queue), cinputptr, entries);
-                    pthread_cond_signal(&(game->mechanics_cv));
                 }
+                pthread_cond_destroy(&(game->input_cv));
+                pthread_cond_init(&(game->input_cv), NULL);
+                game->input_state = BULLET_FIRED;
             }
-            pthread_cond_destroy(&(game->input_cv));
-            pthread_cond_init(&(game->input_cv), NULL);
             break;
 
         case BULLET_FIRED:
-            game->input_state = BULLET_FIRED;
             *retval = pthread_cond_wait(&(game->input_cv), &(game->game_mutex));
             if (*retval)
             {
@@ -501,9 +565,17 @@ void *input(void *args)
                 errbuff("Error: pthread_cond_wait() in input() BULLET_FIRED returned: %d\n", *retval);
                 pthread_mutex_unlock(&(errbuff_mutex));
             }
+            game->input_signaled = 1;
             pthread_cond_destroy(&(game->input_cv));
             pthread_cond_init(&(game->input_cv), NULL);
-            pthread_mutex_unlock(&(game->game_mutex));
+            *retval = pthread_mutex_unlock(&(game->game_mutex));
+            if (*retval)
+            {
+                pthread_mutex_lock(&(errbuff_mutex));
+                errbuff("Error: pthread_mutex_unlock() in input() BULLET_FIRED returned: %d\n", *retval);
+                pthread_mutex_unlock(&(errbuff_mutex));
+            }
+            game->input_signaled = 0;
             break;
 
         case BULLET_HIT:
@@ -513,20 +585,6 @@ void *input(void *args)
 
         default:
             break;
-        }
-        if (game->state != GAME_END)
-        {
-            *retval = pthread_cond_wait(&(game->input_cv), &(game->game_mutex));
-            if (*retval)
-            {
-                game->state = GAME_ERROR;
-                pthread_mutex_lock(&(errbuff_mutex));
-                errbuff("Error: pthread_cond_wait() in input() after switch(game->state) returned: %d\n", *retval);
-                pthread_mutex_unlock(&(errbuff_mutex));
-            }
-            pthread_cond_destroy(&(game->input_cv));
-            pthread_cond_init(&(game->input_cv), NULL);
-            pthread_mutex_unlock(&(game->game_mutex));
         }
     }
     *retval = pthread_mutex_unlock(&(game->game_mutex));
@@ -541,11 +599,19 @@ void *input(void *args)
 
 void *mechanics(void *args)
 {
+    // * thread variables
     game_o_t *game = (game_o_t *)args;
     int *retval = (int *)malloc(sizeof(int));
-    double angle_increment = 0.05;
-    cinput_t *cinputptr, *cinputptr1;
     *retval = 0;
+    // * Bullet variables
+    double angle_increment = 0.05;
+    double tmpx, tmpy, tmpc, tmpm;
+    game->bullet.speed = 3.0;
+    // * variables for handling input queue
+    cinput_t *cinputptr, *cinputptr1;
+    // * Timer variables
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
     *retval = pthread_mutex_lock(&(game->game_mutex));
     if (*retval)
     {
@@ -559,10 +625,12 @@ void *mechanics(void *args)
         switch (game->state)
         {
         case BULLET_READY:
+        { // do once
+            pthread_mutex_trylock(&(game->game_mutex));
             game->bullet.color = (bc_t)(1 + (rand() / RAND_MAX) * 8);
             game->bullet.angle_deg = 0.0;
-            game->bullet.x = game->wattr.cols / 2;
-            game->bullet.y = game->wattr.lines - 3;
+            game->bullet.x = 0.0;
+            game->bullet.y = 0.0;
             while (game->state == BULLET_READY)
             {
                 game->mechanics_state = BULLET_READY;
@@ -574,7 +642,7 @@ void *mechanics(void *args)
                     errbuff("Error: pthread_cond_wait() in mechanics() BULLET_READY returned: %d\n", *retval);
                     pthread_mutex_unlock(&(errbuff_mutex));
                 }
-                else
+                else if (game->state == BULLET_READY)
                 {
                     // Unlock mutex so that input thread can continue to queue input
                     if ((*retval = pthread_mutex_unlock(&(game->game_mutex))))
@@ -664,7 +732,12 @@ void *mechanics(void *args)
                                 }
                                 break;
                             }
-                            pthread_cond_signal(&(game->draw_cv));
+                            gettimeofday(&end, NULL);
+                            if (((end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec)) > 1000000.0 / 25.0)
+                            {
+                                pthread_cond_signal(&(game->draw_cv));
+                                gettimeofday(&start, NULL);
+                            }
                             cinputptr1 = TAILQ_NEXT(cinputptr, entries);
                             if (!TAILQ_EMPTY(&(game->input_queue)))
                             {
@@ -679,15 +752,25 @@ void *mechanics(void *args)
                             if (game->state == GAME_ERROR)
                                 break;
                         }
+                        game->mechanics_signaled = 0;
                     }
                 }
                 pthread_cond_destroy(&(game->mechanics_cv));
                 pthread_cond_init(&(game->mechanics_cv), NULL);
             }
-            break;
+        }
+        break;
 
         case BULLET_FIRED:
+        {
+            // TODO: Make grid snap function to lock incoming bullet to existing bubble grid
+            pthread_mutex_lock(&(game->game_mutex));
             game->mechanics_state = BULLET_FIRED;
+            tmpx = game->bullet.x;
+            tmpy = game->bullet.y;
+            tmpm = tan(game->bullet.angle_deg);
+            tmpc = 0.0;
+            gettimeofday(&start, NULL);
             *retval = pthread_cond_wait(&(game->mechanics_cv), &(game->game_mutex));
             if (*retval)
             {
@@ -696,10 +779,69 @@ void *mechanics(void *args)
                 errbuff("Error: pthread_cond_wait() in mechanics() BULLET_FIRED returned: %d\n", *retval);
                 pthread_mutex_unlock(&(errbuff_mutex));
             }
+            else
+            {
+                *retval = pthread_mutex_unlock(&(game->game_mutex));
+                if (*retval)
+                {
+                    game->state = GAME_ERROR;
+                    pthread_mutex_lock(&(errbuff_mutex));
+                    errbuff("Error: pthread_mutex_unlock() in mechanics() BULLET_FIRED returned: %d\n", *retval);
+                    pthread_mutex_unlock(&(errbuff_mutex));
+                }
+                else
+                {
+                    game->mechanics_signaled = 1;
+                    while (game->state == BULLET_FIRED)
+                    {
+                        // * Move bullet along the line
+                        gettimeofday(&end, NULL);
+                        if (((end.tv_sec - start.tv_sec) * 1000000 + (end.tv_usec - start.tv_usec)) > 1000000.0 / 25.0)
+                        {
+                            // * increment bullet position according to current time
+                            tmpx += ((double)(end.tv_sec - start.tv_sec) + ((double)(end.tv_usec - start.tv_usec)) / 1000000.0) * game->bullet.speed * cos(game->bullet.angle_deg);
+                            bounce(&tmpx, &tmpm, &tmpc, -(((double)(game->wattr.cols - 2) / 2)), (((double)(game->wattr.cols - 2) / 2)));
+                            tmpy = lineEq(tmpx, tmpm, tmpc);
+                            *retval = pthread_mutex_lock(&(game->game_mutex));
+                            if (*retval)
+                            {
+                                game->state = GAME_ERROR;
+                                pthread_mutex_lock(&(errbuff_mutex));
+                                errbuff("Error: pthread_mutex_lock() in mechanics() BULLET_FIRED returned: %d\n", *retval);
+                                pthread_mutex_unlock(&(errbuff_mutex));
+                            }
+                            else
+                            {
+                                if (collide(&(game->wattr), &(game->targets), tmpx, tmpy))
+                                {
+                                    game->state = BULLET_HIT;
+                                    pthread_cond_signal(&(game->draw_cv));
+                                }
+                                else if ((int)(floor(tmpx) - game->bullet.x) != 0 || (int)(floor(tmpy) - game->bullet.y) != 0)
+                                {
+                                    game->bullet.x = tmpx;
+                                    game->bullet.y = tmpy;
+                                    pthread_cond_signal(&(game->draw_cv));
+                                }
+                                *retval = pthread_mutex_unlock(&(game->game_mutex));
+                                if (*retval)
+                                {
+                                    game->state = GAME_ERROR;
+                                    pthread_mutex_lock(&(errbuff_mutex));
+                                    errbuff("Error: pthread_mutex_unlock() in mechanics() BULLET_FIRED returned: %d\n", *retval);
+                                    pthread_mutex_unlock(&(errbuff_mutex));
+                                }
+                            }
+                            gettimeofday(&start, NULL);
+                        }
+                    }
+                }
+                game->mechanics_signaled = 0;
+            }
             pthread_cond_destroy(&(game->mechanics_cv));
             pthread_cond_init(&(game->mechanics_cv), NULL);
-            pthread_mutex_unlock(&(game->game_mutex));
-            break;
+        }
+        break;
 
         case BULLET_HIT:
             game->mechanics_state = BULLET_HIT;
@@ -708,6 +850,16 @@ void *mechanics(void *args)
 
         default:
             break;
+        }
+        if (game->state != GAME_END || game->state != GAME_ERROR)
+        {
+            *retval = pthread_mutex_unlock(&(game->game_mutex));
+            if (*retval)
+            {
+                pthread_mutex_lock(&(errbuff_mutex));
+                errbuff("Error: pthread_mutex_unlock() in mechanics() while() after switch(game->state) returned: %d\n", *retval);
+                pthread_mutex_unlock(&(errbuff_mutex));
+            }
         }
     }
     *retval = pthread_mutex_unlock(&(game->game_mutex));
@@ -868,16 +1020,20 @@ int game_loop(WINDOW *win, int level)
             break;
         case BULLET_FIRED:
             // wait for all threads to reach this stage then signal to them the game state changed and to continue
-            if (game.input_state == BULLET_FIRED && game.draw_state == BULLET_FIRED && game.mechanics_state == BULLET_FIRED)
+            if (game.input_state == BULLET_FIRED && game.draw_state == BULLET_FIRED && game.mechanics_state == BULLET_FIRED && (game.mechanics_signaled == 0))
             {
-                game.state = BULLET_HIT;
-                pthread_cond_signal(&(game.draw_cv));
-                pthread_cond_signal(&(game.input_cv));
                 pthread_cond_signal(&(game.mechanics_cv));
             }
             break;
         case BULLET_HIT:
+            wgetch(win);
             game.state = GAME_END;
+            if (game.input_state == BULLET_FIRED && game.draw_state == BULLET_FIRED && game.mechanics_state == BULLET_FIRED)
+            {
+                pthread_cond_signal(&(game.input_cv));
+                pthread_cond_signal(&(game.draw_cv));
+                pthread_cond_signal(&(game.mechanics_cv));
+            }
             break;
         default:
             game.state = GAME_END;
@@ -885,7 +1041,7 @@ int game_loop(WINDOW *win, int level)
         }
         getmaxyx(stdscr, newmaxlines, newmaxcols);
         // redraw the window if the terminal changed size
-        if (newmaxlines != game.wattr.maxlines || newmaxcols != game.wattr.maxcols)
+        if ((newmaxlines != game.wattr.maxlines || newmaxcols != game.wattr.maxcols) && pthread_mutex_trylock(&(game.game_mutex)))
         {
             game.wattr.maxlines = newmaxlines;
             game.wattr.maxcols = newmaxcols;
@@ -894,6 +1050,7 @@ int game_loop(WINDOW *win, int level)
             mvwin(win, (game.wattr.maxlines / 2) - (game.wattr.lines / 2) - (game.wattr.lines % 2), (game.wattr.maxcols / 2) - (game.wattr.cols / 2) - (game.wattr.cols % 2));
             box(win, 0, 0);
             wrefresh(win);
+            pthread_mutex_unlock(&(game.game_mutex));
         }
     }
     int *threadret;

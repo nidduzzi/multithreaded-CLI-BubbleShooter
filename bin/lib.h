@@ -144,12 +144,6 @@ typedef struct window_attributes_type
     int maxlines;
 } wattr_t;
 
-typedef struct thread_type
-{
-    pthread_t tid;
-    pthread_attr_t attr;
-} thread_t;
-
 typedef struct game_object_type
 {
     gameIs_t state;
@@ -187,6 +181,8 @@ void *fwrapper_textLoader(void *args);
 void drawbubble(wattr_t *wattr, bubble_t bubble, sprite_t sprite);
 double lineEq(double x, double m, double c);
 void drawarrow(wattr_t *wattr, double angle, target_t *targets, sprite_t *sprite);
+int collide(wattr_t *wattr, target_t *targets, double x, double y);
+int bounce(double *x, double *m, double *c, double minY, double maxY);
 int game_loop(WINDOW *win, int level);
 // ...
 

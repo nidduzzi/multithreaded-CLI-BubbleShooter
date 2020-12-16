@@ -2,7 +2,7 @@
 
 int main()
 {
-
+    setlocale(LC_ALL, "");
     int retval = pthread_mutex_init(&(errbuff_mutex), NULL);
     if (retval)
     {
@@ -10,7 +10,6 @@ int main()
     }
     else
     {
-        setlocale(LC_ALL, "");
         initscr();
         noecho();
         cbreak();
