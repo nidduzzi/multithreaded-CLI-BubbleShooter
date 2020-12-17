@@ -50,8 +50,9 @@ int main()
                             wresize(win, winlines, wincols);
                             box(win, 0, 0);
 
-                            mvwprintw(win, 5, 10, "WELCOME TO CLI BUBBLE SHOOTER");
-                            mvwprintw(win, 6, 10, "=============================");
+                            mvwprintw(win, 4, 17, "===================================");
+                            mvwprintw(win, 5, 17, "|| WELCOME TO CLI BUBBLE SHOOTER ||");
+                            mvwprintw(win, 6, 17, "===================================");
                             ref = 0;
                         }
                         for (int i = 0; i < 3; i++)
@@ -83,7 +84,7 @@ int main()
                             }
                             else if (highlight == 1)
                             {
-                                mvwaddstr(win, 1, 1, "Sorry! No game there yet...");
+                                mvwaddstr(win, 20, 23, "Sorry! No game there yet...");
                                 ref = 1;
                             }
                             wrefresh(win);
