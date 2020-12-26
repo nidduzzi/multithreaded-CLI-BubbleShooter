@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <math.h>
 #include <sys/queue.h>
+#include <wchar.h>
 #define PI 3.14159265
 
 typedef enum game_internal_state_t
@@ -38,29 +39,9 @@ typedef enum bubble_color_type
     BUBBLE_BLACK
 } bc_t;
 
-typedef enum draw_object_type
-{
-    DRAW_ALL,
-    DRAW_THIS,
-    DRAW_TARGET,
-    DRAW_BULLET,
-    DRAW_ARROW,
-    DRAW_SCORE,
-    DRAW_CLEAR
-} drawobj_t;
-
-typedef enum draw_state_type
-{
-    DRAW_STATE_INIT,
-    DRAW_STATE_START,
-    DRAW_STATE_END,
-    DRAW_STATE_EXIT,
-    DRAW_STATE_ERROR
-} draw_state_t;
-
 typedef struct sprite_type
 {
-    char **data;
+    wchar_t **data;
     int maxline;
     int maxcol;
 } sprite_t;
@@ -95,7 +76,7 @@ typedef struct bubble_type
 typedef struct textLoaderArgs_type
 {
     char addr[30];
-    char ***dest;
+    wchar_t ***dest;
     int *maxcol;
     int *maxline;
 } tLoaderArg_t;
@@ -114,12 +95,6 @@ typedef struct container_bubble_type
     bubble_t container;
     LIST_ENTRY(container_bubble_type) entries;
 } cbubble_t;
-
-typedef struct container_drawobj_type
-{
-    drawobj_t object;
-    TAILQ_ENTRY(container_drawobj_type) entries;
-} cdrawobj_t;
 
 typedef struct container_input_type
 {
@@ -151,8 +126,6 @@ typedef struct game_object_type
     la_t assets;
     b_t bullet;
     target_t targets;
-    int activeCtypes[9];
-    int num_activeCtypes;
     wattr_t wattr;
     pthread_mutex_t game_mutex;
     pthread_t draw_thread;
@@ -167,7 +140,6 @@ typedef struct game_object_type
     int draw_signaled;
     int input_signaled;
     int mechanics_signaled;
-    TAILQ_HEAD(draw_queue_t, container_drawobj_type) draw_queue;
     TAILQ_HEAD(input_queue_t, container_input_type) input_queue;
     //...
 } game_o_t;
@@ -175,7 +147,7 @@ typedef struct game_object_type
 pthread_mutex_t errbuff_mutex;
 
 int errbuff(const char *s, ...);
-int textLoader(char address[], char ***dest, int *maxcol, int *maxline);
+int textLoader(char address[], wchar_t ***dest, int *maxcol, int *maxline);
 int loadAssetsFromFile(game_o_t *game, int level);
 void *fwrapper_textLoader(void *args);
 void drawbubble(wattr_t *wattr, bubble_t bubble, sprite_t sprite);
@@ -184,6 +156,8 @@ void drawarrow(wattr_t *wattr, double angle, target_t *targets, sprite_t *sprite
 int collide(wattr_t *wattr, target_t *targets, double x, double y);
 int bounce(double *x, double *m, double *c, double minY, double maxY);
 int game_loop(WINDOW *win, int level);
+void spriteUnloader(sprite_t *sprite);
+void targetUnloader(target_t *target);
 // ...
 
 #endif

@@ -3,6 +3,6 @@ r r r r r r r r
 y y y y b b b b
    c c   b b   
     c     b    
-
-       w
-      b b
+               
+       w       
+      b b      

@@ -29,11 +29,11 @@ int errbuff(const char *s, ...)
     return 0;
 }
 
-int textLoader(char address[], char ***dest, int *maxcol, int *maxline)
+int textLoader(char address[], wchar_t ***dest, int *maxcol, int *maxline)
 {
     FILE *fp = fopen(address, "r");
     int linenum = 0, colnum = 0;
-    char c;
+    wchar_t c;
     if (fp == NULL)
     {
         pthread_mutex_lock(&(errbuff_mutex));
@@ -44,8 +44,8 @@ int textLoader(char address[], char ***dest, int *maxcol, int *maxline)
     else
     {
         *maxcol = 0, *maxline = 0;
-        (*dest) = (char **)malloc(sizeof(**dest));
-        while ((c = fgetc(fp)) != EOF)
+        (*dest) = (wchar_t **)malloc(sizeof(**dest));
+        while ((c = fgetwc(fp)) != WEOF)
         {
             if (*dest == NULL)
             {
@@ -60,14 +60,14 @@ int textLoader(char address[], char ***dest, int *maxcol, int *maxline)
                 if ((*maxcol) < (colnum - 1))
                     *maxcol = colnum;
                 colnum = 0;
-                (*dest) = (char **)realloc((*dest), (linenum + 1) * sizeof(*(*dest)));
+                (*dest) = (wchar_t **)realloc((*dest), (linenum + 1) * sizeof(*(*dest)));
             }
             else
             {
                 if (colnum == 0)
-                    (*dest)[linenum] = (char *)malloc(sizeof(char));
+                    (*dest)[linenum] = (wchar_t *)malloc(sizeof(wchar_t));
                 else
-                    (*dest)[linenum] = (char *)realloc((*dest)[linenum], (colnum + 1) * sizeof(char));
+                    (*dest)[linenum] = (wchar_t *)realloc((*dest)[linenum], (colnum + 1) * sizeof(wchar_t));
                 (*dest)[linenum][colnum] = c;
                 ++colnum;
             }
@@ -75,7 +75,9 @@ int textLoader(char address[], char ***dest, int *maxcol, int *maxline)
         *maxline = linenum;
         for (linenum = 0; linenum < *maxline; ++linenum)
         {
-            (*dest)[linenum] = realloc((*dest)[linenum], (*maxcol) * sizeof(char));
+            if ((*dest)[linenum] == NULL)
+                (*dest)[linenum] = malloc(sizeof(wchar_t));
+            (*dest)[linenum] = realloc((*dest)[linenum], ((*maxcol) + 1) * sizeof(wchar_t));
         }
     }
     fclose(fp);
@@ -123,9 +125,6 @@ int loadAssetsFromFile(game_o_t *game, int level)
     LIST_INIT(&(game->targets.bubbles));
     struct container_bubble_type *ptr;
     game->targets.num = 0;
-    for (i = 0; i < 7; ++i)
-        game->activeCtypes[i] = 0;
-    game->num_activeCtypes = 0;
     int j;
     for (i = 0; i < game->assets.layout.maxline; ++i)
     {
@@ -144,7 +143,6 @@ int loadAssetsFromFile(game_o_t *game, int level)
                 }
                 ptr->container = (bubble_t){2 + (j * 2), 2 + (i * 4), BUBBLE_RED, 0};
                 LIST_INSERT_HEAD(&(game->targets.bubbles), ptr, entries);
-                game->activeCtypes[BUBBLE_RED] = 1;
                 ++(game->targets.num);
                 break;
 
@@ -159,7 +157,6 @@ int loadAssetsFromFile(game_o_t *game, int level)
                 }
                 ptr->container = (bubble_t){2 + (j * 2), 2 + (i * 4), BUBBLE_BLUE, 0};
                 LIST_INSERT_HEAD(&(game->targets.bubbles), ptr, entries);
-                game->activeCtypes[BUBBLE_BLUE] = 1;
                 ++(game->targets.num);
                 break;
 
@@ -174,7 +171,6 @@ int loadAssetsFromFile(game_o_t *game, int level)
                 }
                 ptr->container = (bubble_t){2 + (j * 2), 2 + (i * 4), BUBBLE_GREEN, 0};
                 LIST_INSERT_HEAD(&(game->targets.bubbles), ptr, entries);
-                game->activeCtypes[BUBBLE_GREEN] = 1;
                 ++(game->targets.num);
                 break;
 
@@ -189,7 +185,6 @@ int loadAssetsFromFile(game_o_t *game, int level)
                 }
                 ptr->container = (bubble_t){2 + (j * 2), 2 + (i * 4), BUBBLE_YELLOW, 0};
                 LIST_INSERT_HEAD(&(game->targets.bubbles), ptr, entries);
-                game->activeCtypes[BUBBLE_YELLOW] = 1;
                 ++(game->targets.num);
                 break;
 
@@ -204,7 +199,6 @@ int loadAssetsFromFile(game_o_t *game, int level)
                 }
                 ptr->container = (bubble_t){2 + (j * 2), 2 + (i * 4), BUBBLE_CYAN, 0};
                 LIST_INSERT_HEAD(&(game->targets.bubbles), ptr, entries);
-                game->activeCtypes[BUBBLE_CYAN] = 1;
                 ++(game->targets.num);
                 break;
 
@@ -219,7 +213,6 @@ int loadAssetsFromFile(game_o_t *game, int level)
                 }
                 ptr->container = (bubble_t){2 + (j * 2), 2 + (i * 4), BUBBLE_MAGENTA, 0};
                 LIST_INSERT_HEAD(&(game->targets.bubbles), ptr, entries);
-                game->activeCtypes[BUBBLE_MAGENTA] = 1;
                 ++(game->targets.num);
                 break;
 
@@ -234,7 +227,6 @@ int loadAssetsFromFile(game_o_t *game, int level)
                 }
                 ptr->container = (bubble_t){2 + (j * 2), 2 + (i * 4), BUBBLE_WHITE, 0};
                 LIST_INSERT_HEAD(&(game->targets.bubbles), ptr, entries);
-                game->activeCtypes[BUBBLE_WHITE] = 1;
                 ++(game->targets.num);
                 break;
 
@@ -249,7 +241,6 @@ int loadAssetsFromFile(game_o_t *game, int level)
                 }
                 ptr->container = (bubble_t){2 + (j * 2), 2 + (i * 4), BUBBLE_BLACK, 0};
                 LIST_INSERT_HEAD(&(game->targets.bubbles), ptr, entries);
-                game->activeCtypes[BUBBLE_BLACK] = 1;
                 ++(game->targets.num);
                 break;
             }
@@ -275,7 +266,7 @@ void drawbubble(wattr_t *wattr, bubble_t bubble, sprite_t sprite)
         {
             if (sprite.data[i][j] != ' ' && sprite.data[i][j] != '\n')
             {
-                mvwaddch(wattr->win, (int)(bubble.y / 2) - (sprite.maxline / 2) - (sprite.maxline % 2) + i + 1, (int)bubble.x - (sprite.maxcol / 2) - (sprite.maxcol % 2) + j + 1, sprite.data[i][j]);
+                mvwprintw(wattr->win, (int)round(bubble.y / 2) - (sprite.maxline / 2) + i + 1, (int)round(bubble.x) - (sprite.maxcol / 2) + j + 1, "%lc", sprite.data[i][j]);
                 // wrefresh(wattr->win);
             }
         }
@@ -288,7 +279,7 @@ double lineEq(double x, double m, double c)
 {
     return m * x + c;
 }
-
+// TODO: Make collision calculations using line equation (y=mx+c) so that it doesn't skip over parts that isn't (x, y)
 int collide(wattr_t *wattr, target_t *targets, double x, double y)
 {
     cbubble_t *cbubbleptr;
@@ -298,7 +289,12 @@ int collide(wattr_t *wattr, target_t *targets, double x, double y)
     {
         bx = (((double)wattr->lines - 3) * 2) - (cbubbleptr->container.y);
         by = (((double)wattr->cols - 2) / 2) - (cbubbleptr->container.x);
-        if (sqrt(pow(((bx - x)), 2) + pow((by - y), 2)) < 4.1)
+        if ((atan(fabs((by - y) / (bx - x))) < (atan(2) / 2)) && sqrt(pow(((bx - x)), 2) + pow((by - y), 2)) < 4.0) //check for horizontal collision
+        {
+            retval = 1;
+            break;
+        }
+        else if (sqrt(pow(((bx - x)), 2) + pow((by - y), 2)) < (2 * sqrt(5.0) + 0.000005)) //check for diagonal collision
         {
             retval = 1;
             break;
@@ -328,7 +324,6 @@ int bounce(double *x, double *m, double *c, double minY, double maxY)
 void drawarrow(wattr_t *wattr, double angle, target_t *targets, sprite_t *sprite)
 {
     int touchTarget = 0, line = wattr->lines - 2, col = 1;
-    cbubble_t *cbubbleptr;
     double x = 0.0, y = 0.0, m = tan(angle), c = 0.0, bx, by, leasterror, dotpos[8][2] = {{1.6, 0.5}, {0.4, 0.5}, {1.6, 0.7}, {1.6, 0.3}, {1.0, 0.7}, {1.0, 0.3}, {0.4, 0.7}, {0.4, 0.3}}, cerror;
     int leasterroridx, i;
     while (!touchTarget)
@@ -336,40 +331,39 @@ void drawarrow(wattr_t *wattr, double angle, target_t *targets, sprite_t *sprite
         // reflect the line if it touches the sides of the game box
         bounce(&x, &m, &c, -(((double)(wattr->cols - 2) / 2)), (((double)(wattr->cols - 2) / 2)));
         // calculate the next arrow segment column position on the next line
-        col = (int)floor(((double)wattr->cols / 2) - (y = lineEq(x, m, c)) + 0.005 /*offset any potential floating point errors*/);
+        col = (int)floor(((double)wattr->cols / 2) - (y = lineEq(x, m, c)) + 0.00000000005 /*offset any potential floating point errors*/);
         // check current distance to the targets
         touchTarget = collide(wattr, targets, x, y);
         if (line == 1)
             touchTarget = 1;
-        if (touchTarget)
+        // if (touchTarget)
+        // {
+        //     mvwprintw(wattr->win, line, col, "%lc", sprite->data[0][0]);
+        // }
+        // else
+        // {
+        // }
+        leasterroridx = 0;
+        for (i = 0, leasterror = MAXFLOAT; i < 8 && m != 0.0; ++i)
         {
-            mvwaddstr(wattr->win, line, col, sprite->data[0]);
-        }
-        else
-        {
-            leasterroridx = 0;
-            for (i = 0, leasterror = MAXFLOAT; i < 8 && m != 0.0; ++i)
+            bx = ((dotpos[i][1] + floor(y)) + ((dotpos[i][0] + floor(x)) / m) - c) / (m + (1 / m)); /* Get the intersect coordinates */
+            by = lineEq(bx, m, c);
+            if (bx < x + 2 && bx > x)
             {
-                bx = ((dotpos[i][1] + floor(y)) + ((dotpos[i][0] + floor(x)) / m) - c) / (m + (1 / m)); /* Get the intersect coordinates */
-                by = lineEq(bx, m, c);
-                if (bx < x + 2 && bx > x)
+                /* Calulate the distance of the braille dot from the line*/
+                if ((cerror = sqrt(pow(dotpos[i][0] + floor(x) - bx, 2) + pow(dotpos[i][1] + floor(y) - by, 2))) < leasterror)
                 {
-                    /* Calulate the distance of the braille dot from the line*/
-                    if ((cerror = sqrt(pow(dotpos[i][0] + floor(x) - bx, 2) + pow(dotpos[i][1] + floor(y) - by, 2))) < leasterror)
-                    {
-                        leasterror = cerror;
-                        leasterroridx = i;
-                    }
+                    leasterror = cerror;
+                    leasterroridx = i;
                 }
             }
-            if (col > 0 && col < (wattr->cols - 1) && line > 0 && line < (wattr->lines - 1))
-            {
-                mvwaddstr(wattr->win, line, col, sprite->data[leasterroridx + 1]);
-                // TODO:REMOVE AFTER DEBUG
-                wrefresh(wattr->win);
-                // TODO:REMOVE AFTER DEBUG
-            }
-            leasterroridx = 0;
+        }
+        if (col > 0 && col < (wattr->cols - 1) && line > 0 && line < (wattr->lines - 1))
+        {
+            mvwprintw(wattr->win, line, col, "%lc", sprite->data[leasterroridx + 1][0]);
+            // TODO:REMOVE AFTER DEBUG
+            wrefresh(wattr->win);
+            // TODO:REMOVE AFTER DEBUG
         }
         --line;
         x += 2;
@@ -416,6 +410,7 @@ void *draw(void *args)
                     }
                     drawarrow(&(game->wattr), game->bullet.angle_deg, &(game->targets), &(game->assets.arrow));
                     drawbubble(&(game->wattr), (bubble_t){((game->wattr.cols - 2) / 2) - game->bullet.y, ((game->wattr.lines - 3) * 2) - game->bullet.x, game->bullet.color, 0}, game->assets.bubble);
+                    mvwprintw(game->wattr.win, game->wattr.lines - 1, game->wattr.cols - 11, "%lf", game->bullet.angle_deg);
                     wrefresh(game->wattr.win);
                 }
                 pthread_cond_destroy(&(game->draw_cv));
@@ -444,6 +439,8 @@ void *draw(void *args)
                         drawbubble(&(game->wattr), cbubbleptr->container, game->assets.bubble);
                     }
                     drawbubble(&(game->wattr), (bubble_t){((game->wattr.cols - 2) / 2) - game->bullet.y, ((game->wattr.lines - 3) * 2) - game->bullet.x, game->bullet.color, 0}, game->assets.bubble);
+                    mvwprintw(game->wattr.win, game->wattr.lines - 1, 1, "%lf, %lf", game->bullet.y, game->bullet.x);
+                    mvwprintw(game->wattr.win, game->wattr.lines - 1, game->wattr.cols - 11, "%lf", game->bullet.angle_deg);
                     wrefresh(game->wattr.win);
                 }
                 pthread_cond_destroy(&(game->draw_cv));
@@ -604,9 +601,9 @@ void *mechanics(void *args)
     int *retval = (int *)malloc(sizeof(int));
     *retval = 0;
     // * Bullet variables
-    double angle_increment = 0.05;
+    double angle_increment = 0.01;
     double tmpx, tmpy, tmpc, tmpm;
-    game->bullet.speed = 3.0;
+    game->bullet.speed = 5.0;
     // * variables for handling input queue
     cinput_t *cinputptr, *cinputptr1;
     // * Timer variables
@@ -626,7 +623,6 @@ void *mechanics(void *args)
         {
         case BULLET_READY:
         { // do once
-            pthread_mutex_trylock(&(game->game_mutex));
             game->bullet.color = (bc_t)(1 + (rand() / RAND_MAX) * 8);
             game->bullet.angle_deg = 0.0;
             game->bullet.x = 0.0;
@@ -634,6 +630,7 @@ void *mechanics(void *args)
             while (game->state == BULLET_READY)
             {
                 game->mechanics_state = BULLET_READY;
+                // Sleep the thread while there is no input to process
                 *retval = pthread_cond_wait(&(game->mechanics_cv), &(game->game_mutex));
                 if (*retval)
                 {
@@ -644,7 +641,7 @@ void *mechanics(void *args)
                 }
                 else if (game->state == BULLET_READY)
                 {
-                    // Unlock mutex so that input thread can continue to queue input
+                    // Unlock mutex so that draw thread can continue to draw
                     if ((*retval = pthread_mutex_unlock(&(game->game_mutex))))
                     {
                         game->state = GAME_ERROR;
@@ -814,6 +811,9 @@ void *mechanics(void *args)
                             {
                                 if (collide(&(game->wattr), &(game->targets), tmpx, tmpy))
                                 {
+                                    // TODO: Implement collision grid snapping here buy calculating arctan of the distance and using the angle to divide into sections and calculate which section is closest and snap to that position
+                                    game->bullet.x = tmpx;
+                                    game->bullet.y = tmpy;
                                     game->state = BULLET_HIT;
                                     pthread_cond_signal(&(game->draw_cv));
                                 }
@@ -912,7 +912,6 @@ int game_loop(WINDOW *win, int level)
                 init_pair(BUBBLE_CYAN, COLOR_CYAN, COLOR_BLACK);
                 init_pair(BUBBLE_MAGENTA, COLOR_MAGENTA, COLOR_BLACK);
                 // initialize thread queues
-                TAILQ_INIT(&(game.draw_queue));
                 TAILQ_INIT(&(game.input_queue));
                 // initialize threads and other related variables
                 {
@@ -1090,5 +1089,33 @@ int game_loop(WINDOW *win, int level)
         wclear(win);
         wrefresh(win);
     }
+    spriteUnloader(&(game.assets.arrow));
+    spriteUnloader(&(game.assets.bg));
+    spriteUnloader(&(game.assets.bubble));
+    spriteUnloader(&(game.assets.layout));
+    targetUnloader(&(game.targets));
     return retval;
+}
+
+void spriteUnloader(sprite_t *sprite)
+{
+    wchar_t ***dest = &(sprite->data);
+    int *maxline = &(sprite->maxline);
+    int linenum = 0;
+    for (linenum = 0; linenum < *maxline; ++linenum)
+    {
+        free((*dest)[linenum]);
+    }
+    free((*dest));
+}
+
+void targetUnloader(target_t *target)
+{
+    cbubble_t *ptr1 = LIST_FIRST(&(target->bubbles)), *ptr2;
+    while (ptr1 != NULL)
+    {
+        ptr2 = LIST_NEXT(ptr1, entries);
+        free(ptr1);
+        ptr1 = ptr2;
+    }
 }
