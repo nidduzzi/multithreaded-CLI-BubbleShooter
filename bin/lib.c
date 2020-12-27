@@ -266,7 +266,7 @@ void drawbubble(wattr_t *wattr, bubble_t bubble, sprite_t sprite)
         {
             if (sprite.data[i][j] != ' ' && sprite.data[i][j] != '\n')
             {
-                mvwprintw(wattr->win, (int)round(bubble.y / 2) - (sprite.maxline / 2) + i + 1, (int)round(bubble.x) - (sprite.maxcol / 2) + j + 1, "%lc", sprite.data[i][j]);
+                mvwprintw(wattr->win, (int)floor(bubble.y / 2) - (sprite.maxline / 2) + i + 1, (int)bubble.x - (sprite.maxcol / 2) + j + 1, "%lc", sprite.data[i][j]);
                 // wrefresh(wattr->win);
             }
         }
@@ -279,28 +279,49 @@ double lineEq(double x, double m, double c)
 {
     return m * x + c;
 }
-// TODO: Make collision calculations using line equation (y=mx+c) so that it doesn't skip over parts that isn't (x, y)
-int collide(wattr_t *wattr, target_t *targets, double x, double y)
+
+bubble_t *collide(wattr_t *wattr, target_t *targets, double m, double c, double x, double y)
 {
-    cbubble_t *cbubbleptr;
-    double bx, by;
+    cbubble_t *cbubbleptr = NULL;
+    double bx, by, x1, x2, a, b, constant;
     int retval = 0;
     LIST_FOREACH(cbubbleptr, &(targets->bubbles), entries)
     {
         bx = (((double)wattr->lines - 3) * 2) - (cbubbleptr->container.y);
         by = (((double)wattr->cols - 2) / 2) - (cbubbleptr->container.x);
-        if ((atan(fabs((by - y) / (bx - x))) < (atan(2) / 2)) && sqrt(pow(((bx - x)), 2) + pow((by - y), 2)) < 4.0) //check for horizontal collision
+        a = 1 + pow(m, 2);
+        b = 2 * (m * c - m * by - bx);
+        constant = pow(by, 2) + pow(bx, 2) + pow(c, 2) - (2 * c * by);                                                         // Subtract radius squared to use constant
+        if ((atan(fabs((by - y) / (bx - x))) > ((atan(1.0) + acos(0.0)) / 2)) && (discriminant(a, b, constant - 16.0) >= 0.0)) //check for horizontal collision
         {
-            retval = 1;
-            break;
+            x1 = (-b + sqrt(discriminant(a, b, constant - 16.0))) / (2 * a);
+            x2 = (-b - sqrt(discriminant(a, b, constant - 16.0))) / (2 * a);
+            if (((x >= x1) || (x >= x2))) // If at least one of the intersection points is less than or equal to the current x then we have intersected one of the bubbles
+            {
+                retval = 1;
+                break;
+            }
         }
-        else if (sqrt(pow(((bx - x)), 2) + pow((by - y), 2)) < (2 * sqrt(5.0) + 0.000005)) //check for diagonal collision
+        else if ((discriminant(a, b, constant - 20.0) >= 0.0)) //check for diagonal collision
         {
-            retval = 1;
-            break;
+            x1 = (-b + sqrt(discriminant(a, b, constant - 20.0))) / (2 * a);
+            x2 = (-b - sqrt(discriminant(a, b, constant - 20.0))) / (2 * a);
+            if (((x >= x1) || (x >= x2))) // If at least one of the intersection points is less than or equal to the current x then we have intersected one of the bubbles
+            {
+                retval = 1;
+                break;
+            }
         }
     }
-    return retval;
+    if (retval == 1)
+        return &(cbubbleptr->container);
+    else
+        return NULL;
+}
+
+double discriminant(double a, double b, double c)
+{
+    return pow(b, 2) - 4 * (a * c);
 }
 
 int bounce(double *x, double *m, double *c, double minY, double maxY)
@@ -333,16 +354,8 @@ void drawarrow(wattr_t *wattr, double angle, target_t *targets, sprite_t *sprite
         // calculate the next arrow segment column position on the next line
         col = (int)floor(((double)wattr->cols / 2) - (y = lineEq(x, m, c)) + 0.00000000005 /*offset any potential floating point errors*/);
         // check current distance to the targets
-        touchTarget = collide(wattr, targets, x, y);
-        if (line == 1)
+        if (line == 1 || collide(wattr, targets, m, c, x, y) != NULL)
             touchTarget = 1;
-        // if (touchTarget)
-        // {
-        //     mvwprintw(wattr->win, line, col, "%lc", sprite->data[0][0]);
-        // }
-        // else
-        // {
-        // }
         leasterroridx = 0;
         for (i = 0, leasterror = MAXFLOAT; i < 8 && m != 0.0; ++i)
         {
@@ -358,13 +371,13 @@ void drawarrow(wattr_t *wattr, double angle, target_t *targets, sprite_t *sprite
                 }
             }
         }
+        if (fabs(m) == 0.0)
+            leasterroridx = 4;
         if (col > 0 && col < (wattr->cols - 1) && line > 0 && line < (wattr->lines - 1))
         {
             mvwprintw(wattr->win, line, col, "%lc", sprite->data[leasterroridx + 1][0]);
-            // TODO:REMOVE AFTER DEBUG
-            wrefresh(wattr->win);
-            // TODO:REMOVE AFTER DEBUG
         }
+        bx = x, by = y;
         --line;
         x += 2;
     }
@@ -419,6 +432,13 @@ void *draw(void *args)
             break;
 
         case BULLET_FIRED:
+            if ((*retval = pthread_mutex_lock(&(game->game_mutex))))
+            {
+                game->state = GAME_ERROR;
+                pthread_mutex_lock(&(errbuff_mutex));
+                errbuff("Error: pthread_mutex_lock() in draw() BULLET_FIRED returned: %d\n", *retval);
+                pthread_mutex_unlock(&(errbuff_mutex));
+            }
             game->draw_state = BULLET_FIRED;
             while (game->state == BULLET_FIRED)
             {
@@ -449,7 +469,27 @@ void *draw(void *args)
             break;
 
         case BULLET_HIT:
-            game->draw_state = BULLET_HIT;
+            if ((*retval = pthread_mutex_lock(&(game->game_mutex))))
+            {
+                game->state = GAME_ERROR;
+                pthread_mutex_lock(&(errbuff_mutex));
+                errbuff("Error: pthread_mutex_lock() in draw() BULLET_FIRED returned: %d\n", *retval);
+                pthread_mutex_unlock(&(errbuff_mutex));
+            }
+            else
+            {
+                wclear(game->wattr.win);
+                box(game->wattr.win, 0, 0);
+                LIST_FOREACH(cbubbleptr, &(game->targets.bubbles), entries)
+                {
+                    drawbubble(&(game->wattr), cbubbleptr->container, game->assets.bubble);
+                }
+                // drawbubble(&(game->wattr), (bubble_t){((game->wattr.cols - 2) / 2) - game->bullet.y, ((game->wattr.lines - 3) * 2) - game->bullet.x, game->bullet.color, 0}, game->assets.bubble);
+                mvwprintw(game->wattr.win, game->wattr.lines - 1, 1, "%lf, %lf", game->bullet.y, game->bullet.x);
+                mvwprintw(game->wattr.win, game->wattr.lines - 1, game->wattr.cols - 11, "%lf", game->bullet.angle_deg);
+                wrefresh(game->wattr.win);
+                game->draw_state = BULLET_HIT;
+            }
             if ((*retval = pthread_cond_wait(&(game->draw_cv), &(game->game_mutex))))
             {
                 game->state = GAME_ERROR;
@@ -623,7 +663,7 @@ void *mechanics(void *args)
         {
         case BULLET_READY:
         { // do once
-            game->bullet.color = (bc_t)(1 + (rand() / RAND_MAX) * 8);
+            game->bullet.color = (bc_t)(1 + ((double)rand() / (double)RAND_MAX) * 8.0);
             game->bullet.angle_deg = 0.0;
             game->bullet.x = 0.0;
             game->bullet.y = 0.0;
@@ -760,7 +800,6 @@ void *mechanics(void *args)
 
         case BULLET_FIRED:
         {
-            // TODO: Make grid snap function to lock incoming bullet to existing bubble grid
             pthread_mutex_lock(&(game->game_mutex));
             game->mechanics_state = BULLET_FIRED;
             tmpx = game->bullet.x;
@@ -788,6 +827,7 @@ void *mechanics(void *args)
                 }
                 else
                 {
+                    bubble_t *collidedBubble = NULL;
                     game->mechanics_signaled = 1;
                     while (game->state == BULLET_FIRED)
                     {
@@ -809,15 +849,56 @@ void *mechanics(void *args)
                             }
                             else
                             {
-                                if (collide(&(game->wattr), &(game->targets), tmpx, tmpy))
+                                if ((collidedBubble = collide(&(game->wattr), &(game->targets), tmpm, tmpc, tmpx, tmpy)) != NULL)
                                 {
-                                    // TODO: Implement collision grid snapping here buy calculating arctan of the distance and using the angle to divide into sections and calculate which section is closest and snap to that position
-                                    game->bullet.x = tmpx;
-                                    game->bullet.y = tmpy;
-                                    game->state = BULLET_HIT;
+                                    double bx = (((double)game->wattr.lines - 3) * 2) - collidedBubble->y;
+                                    double by = (((double)game->wattr.cols - 2) / 2) - collidedBubble->x;
+                                    double halfangle = ((atan(1.0) + acos(0.0)) / 2);
+                                    double theta = atan2((tmpy - by), (tmpx - bx));
+                                    if ((theta >= 0.0) && (theta < halfangle))
+                                    {
+                                        game->bullet.x = bx + 4.0;
+                                        game->bullet.y = by + 2.0;
+                                    }
+                                    else if ((theta >= halfangle) && (theta < (M_PI - halfangle)))
+                                    {
+                                        game->bullet.x = bx;
+                                        game->bullet.y = by + 4.0;
+                                    }
+                                    else if ((theta >= (M_PI - halfangle)) && (theta < M_PI))
+                                    {
+                                        game->bullet.x = bx - 4.0;
+                                        game->bullet.y = by + 2.0;
+                                    }
+                                    else if ((theta >= -M_PI) && (theta < (-M_PI + halfangle)))
+                                    {
+                                        game->bullet.x = bx - 4.0;
+                                        game->bullet.y = by - 2.0;
+                                    }
+                                    else if ((theta >= (-M_PI + halfangle)) && (theta < (-halfangle)))
+                                    {
+                                        game->bullet.x = bx;
+                                        game->bullet.y = by - 4.0;
+                                    }
+                                    else if ((theta < 0.0) && (theta >= (-halfangle)))
+                                    {
+
+                                        game->bullet.x = bx + 4.0;
+                                        game->bullet.y = by - 2.0;
+                                    }
                                     pthread_cond_signal(&(game->draw_cv));
+                                    // unlock to draw last update
+                                    *retval = pthread_mutex_unlock(&(game->game_mutex));
+                                    if (*retval)
+                                    {
+                                        game->state = GAME_ERROR;
+                                        pthread_mutex_lock(&(errbuff_mutex));
+                                        errbuff("Error: pthread_mutex_unlock() in mechanics() BULLET_FIRED returned: %d\n", *retval);
+                                        pthread_mutex_unlock(&(errbuff_mutex));
+                                    }
+                                    break;
                                 }
-                                else if ((int)(floor(tmpx) - game->bullet.x) != 0 || (int)(floor(tmpy) - game->bullet.y) != 0)
+                                else if ((int)(tmpx - game->bullet.x) != 0 || (int)(tmpy - game->bullet.y) != 0)
                                 {
                                     game->bullet.x = tmpx;
                                     game->bullet.y = tmpy;
@@ -833,6 +914,35 @@ void *mechanics(void *args)
                                 }
                             }
                             gettimeofday(&start, NULL);
+                        }
+                    }
+
+                    // lock again to change game state to BULLET_HIT
+                    *retval = pthread_mutex_lock(&(game->game_mutex));
+                    if (*retval)
+                    {
+                        game->state = GAME_ERROR;
+                        pthread_mutex_lock(&(errbuff_mutex));
+                        errbuff("Error: pthread_mutex_lock() in mechanics() BULLET_FIRED returned: %d\n", *retval);
+                        pthread_mutex_unlock(&(errbuff_mutex));
+                    }
+                    else
+                    {
+                        // add the bullet to the existing list of targets with a modified flag to indicate where to start searching for a cluster of the same color in BULLET_HIT
+                        cbubble_t *ptr = (cbubble_t*)malloc(sizeof(cbubble_t));
+                        ptr->container = (bubble_t){((game->wattr.cols - 2) / 2) - game->bullet.y, ((game->wattr.lines - 3) * 2) - game->bullet.x, game->bullet.color, 1};
+                        LIST_INSERT_HEAD(&(game->targets.bubbles), ptr, entries);
+                        // Change game state after other draw thread finshes its task
+                        game->state = BULLET_HIT;
+                        pthread_cond_signal(&(game->draw_cv));
+                        pthread_cond_signal(&(game->input_cv));
+                        *retval = pthread_mutex_unlock(&(game->game_mutex));
+                        if (*retval)
+                        {
+                            game->state = GAME_ERROR;
+                            pthread_mutex_lock(&(errbuff_mutex));
+                            errbuff("Error: pthread_mutex_unlock() in mechanics() BULLET_FIRED returned: %d\n", *retval);
+                            pthread_mutex_unlock(&(errbuff_mutex));
                         }
                     }
                 }
@@ -890,6 +1000,7 @@ int game_loop(WINDOW *win, int level)
         case GAME_INIT:
             if ((retval = loadAssetsFromFile(&game, level)) == 0)
             {
+                srand(time(NULL));
                 // Set next game state
                 game.state = BULLET_READY;
                 game.draw_state = GAME_INIT;
@@ -1053,7 +1164,7 @@ int game_loop(WINDOW *win, int level)
         }
     }
     int *threadret;
-    // TODO: Take care of post game stuff (Score, completion, free dynamic vars(sprites,etc) etc)
+    // TODO: Take care of post game stuff (Score, completion, free dynamic vars(sprites (DONE), Targets(DONE),etc) etc)
     if (game.state == GAME_ERROR)
     {
         pthread_cancel(game.input_thread);

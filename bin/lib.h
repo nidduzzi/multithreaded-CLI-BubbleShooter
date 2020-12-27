@@ -14,7 +14,7 @@
 #include <math.h>
 #include <sys/queue.h>
 #include <wchar.h>
-#define PI 3.14159265
+// #define PI 3.14159265
 
 typedef enum game_internal_state_t
 {
@@ -88,7 +88,7 @@ typedef struct errorbuffer_type
     int num;
 } errorbuffer_t;
 
-errorbuffer_t errbuffer; // Global variable for buffering printf
+static errorbuffer_t errbuffer; // Global variable for buffering printf
 
 typedef struct container_bubble_type
 {
@@ -144,7 +144,7 @@ typedef struct game_object_type
     //...
 } game_o_t;
 
-pthread_mutex_t errbuff_mutex;
+static pthread_mutex_t errbuff_mutex;
 
 int errbuff(const char *s, ...);
 int textLoader(char address[], wchar_t ***dest, int *maxcol, int *maxline);
@@ -152,8 +152,9 @@ int loadAssetsFromFile(game_o_t *game, int level);
 void *fwrapper_textLoader(void *args);
 void drawbubble(wattr_t *wattr, bubble_t bubble, sprite_t sprite);
 double lineEq(double x, double m, double c);
+double discriminant(double a, double b, double c);
 void drawarrow(wattr_t *wattr, double angle, target_t *targets, sprite_t *sprite);
-int collide(wattr_t *wattr, target_t *targets, double x, double y);
+bubble_t *collide(wattr_t *wattr, target_t *targets, double m, double c, double x, double y);
 int bounce(double *x, double *m, double *c, double minY, double maxY);
 int game_loop(WINDOW *win, int level);
 void spriteUnloader(sprite_t *sprite);

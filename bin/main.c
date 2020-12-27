@@ -92,6 +92,7 @@ int main()
                         }
                     }
                     delwin(win);
+                    refresh();
                 }
                 else
                 {
@@ -106,6 +107,7 @@ int main()
             addstr("Terminal not colour capable\n");
             refresh();
         }
+        clear();
         endwin();
 
         pthread_mutex_destroy(&(errbuff_mutex));
