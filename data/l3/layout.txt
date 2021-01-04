@@ -1,0 +1,7 @@
+y y y y r r r r
+ x x       b b 
+  x  c c c  b
+    c c c c
+   g g g g g 
+r r r r y y y y
+
