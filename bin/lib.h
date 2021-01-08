@@ -48,7 +48,6 @@ typedef struct sprite_type
 
 typedef struct level_assets_type
 {
-    sprite_t bg;
     sprite_t layout;
     sprite_t bubble;
     sprite_t arrow;

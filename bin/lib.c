@@ -45,8 +45,10 @@ int textLoader(char address[], wchar_t ***dest, int *maxcol, int *maxline)
     {
         *maxcol = 0, *maxline = 0;
         (*dest) = (wchar_t **)malloc(sizeof(**dest));
+        (*dest)[linenum] = NULL;
         while ((c = fgetwc(fp)) != WEOF)
         {
+            (*dest)[linenum] = (wchar_t *)realloc((*dest)[linenum], (colnum + 1) * sizeof(wchar_t));
             if (*dest == NULL)
             {
                 pthread_mutex_lock(&(errbuff_mutex));
@@ -56,18 +58,16 @@ int textLoader(char address[], wchar_t ***dest, int *maxcol, int *maxline)
             }
             if (c == '\n')
             {
+                (*dest)[linenum][colnum] = L'\0';
                 ++linenum;
-                if ((*maxcol) < (colnum - 1))
+                if ((*maxcol) < (colnum))
                     *maxcol = colnum;
                 colnum = 0;
-                (*dest) = (wchar_t **)realloc((*dest), (linenum + 1) * sizeof(*(*dest)));
+                (*dest) = (wchar_t **)realloc((*dest), (linenum + 1) * sizeof(wchar_t *));
+                (*dest)[linenum] = NULL;
             }
             else
             {
-                if (colnum == 0)
-                    (*dest)[linenum] = (wchar_t *)malloc(sizeof(wchar_t));
-                else
-                    (*dest)[linenum] = (wchar_t *)realloc((*dest)[linenum], (colnum + 1) * sizeof(wchar_t));
                 (*dest)[linenum][colnum] = c;
                 ++colnum;
             }
@@ -86,7 +86,7 @@ int textLoader(char address[], wchar_t ***dest, int *maxcol, int *maxline)
 
 int loadAssetsFromFile(game_o_t *game, int level)
 {
-    tLoaderArg_t params[4];
+    tLoaderArg_t params[3];
     sprintf(params[0].addr, "../data/bubble.txt");
     params[0].dest = &(game->assets.bubble.data);
     params[0].maxcol = &(game->assets.bubble.maxcol);
@@ -95,28 +95,12 @@ int loadAssetsFromFile(game_o_t *game, int level)
     params[1].dest = &(game->assets.arrow.data);
     params[1].maxcol = &(game->assets.arrow.maxcol);
     params[1].maxline = &(game->assets.arrow.maxline);
-    sprintf(params[2].addr, "../data/l%d/background.txt", level);
-    params[2].dest = &(game->assets.bg.data);
-    params[2].maxcol = &(game->assets.bg.maxcol);
-    params[2].maxline = &(game->assets.bg.maxline);
-    sprintf(params[3].addr, "../data/l%d/layout.txt", level);
-    params[3].dest = &(game->assets.layout.data);
-    params[3].maxcol = &(game->assets.layout.maxcol);
-    params[3].maxline = &(game->assets.layout.maxline);
+    sprintf(params[2].addr, "../data/l%d/layout.txt", level);
+    params[2].dest = &(game->assets.layout.data);
+    params[2].maxcol = &(game->assets.layout.maxcol);
+    params[2].maxline = &(game->assets.layout.maxline);
     int i;
-    // clock_t cstart = clock();
-    // pthread_t threads[4];
-    // for (i = 0; i < 4; ++i)
-    // {
-    //     pthread_create(&(threads[i]), NULL, fwrapper_textLoader, (void *)&(params[i]));
-    // }
-    // for (i = 0; i < 4; ++i)
-    //     pthread_join(threads[i], NULL);
-    // clock_t delta  = clock() - cstart;
-    pthread_mutex_lock(&(errbuff_mutex));
-    // errbuff("clock: %ld, time: %Lf\n", delta, (long double)delta/(long double)CLOCKS_PER_SEC);
-    pthread_mutex_unlock(&(errbuff_mutex));
-    for (i = 0; i < 4; ++i)
+    for (i = 0; i < 3; ++i)
     {
         if (textLoader(params[i].addr, params[i].dest, params[i].maxcol, params[i].maxline) != 0)
             return -1;
@@ -929,7 +913,7 @@ void *mechanics(void *args)
                     else
                     {
                         // add the bullet to the existing list of targets with a modified flag to indicate where to start searching for a cluster of the same color in BULLET_HIT
-                        cbubble_t *ptr = (cbubble_t*)malloc(sizeof(cbubble_t));
+                        cbubble_t *ptr = (cbubble_t *)malloc(sizeof(cbubble_t));
                         ptr->container = (bubble_t){((game->wattr.cols - 2) / 2) - game->bullet.y, ((game->wattr.lines - 3) * 2) - game->bullet.x, game->bullet.color, 1};
                         LIST_INSERT_HEAD(&(game->targets.bubbles), ptr, entries);
                         // Change game state after other draw thread finshes its task
@@ -1201,7 +1185,6 @@ int game_loop(WINDOW *win, int level)
         wrefresh(win);
     }
     spriteUnloader(&(game.assets.arrow));
-    spriteUnloader(&(game.assets.bg));
     spriteUnloader(&(game.assets.bubble));
     spriteUnloader(&(game.assets.layout));
     targetUnloader(&(game.targets));
@@ -1231,103 +1214,100 @@ void targetUnloader(target_t *target)
     }
 }
 
-void selectLevelscreen(WINDOW *win,int wincols,int winlines,int maxlines,int maxcols){
-        
-        //create window
-        if (has_colors())
+void selectLevelscreen(WINDOW *win, int wincols, int winlines, int maxlines, int maxcols)
+{
+    //create window
+    if (has_colors())
+    {
+        if (maxlines < winlines || maxcols < wincols)
         {
-            if (maxlines < winlines || maxcols < wincols)
-            {
-                addstr("Terminal too small\n");
-                refresh();
-                getch();
-            }
-            else
-            {
-                if (start_color() == OK)
-                {
-                    win = newwin(winlines, wincols, (maxlines / 2) - (winlines / 2) - (winlines % 2), (maxcols / 2) - (wincols / 2) - (wincols % 2));
-                    keypad(win, true);
-
-                    char menu[5][50] = {"1-LEVEL_1", "2-LEVEL_2", "3-LEVEL_3","4-LEVEL_4","5-QUIT"};
-                    int key, ref = 1;
-                    int highlight = 0;
-
-                    while (key != 10 || highlight != 2)
-                    {
-                        if (ref)
-                        {
-                            mvwin(win, (maxlines / 2) - (winlines / 2) - (winlines % 2), (maxcols / 2) - (wincols / 2) - (wincols % 2));
-                            wresize(win, winlines, wincols);
-                            box(win, 0, 0);
-
-                            mvwprintw(win, 4, 17, "===================================");
-                            mvwprintw(win, 5, 17, "||   PLEASE SELECT GAME LEVEL    ||");
-                            mvwprintw(win, 6, 17, "===================================");
-                            ref = 0;
-                        }
-                        for (int i = 0; i < 5; i++)
-                        {
-                            if (i == highlight)
-                            {
-                                wattron(win, A_REVERSE);
-                            }
-                            mvwprintw(win, i + 9, 15, menu[i]);
-                            wattroff(win, A_REVERSE);
-                        }
-                        wrefresh(win);
-                        key = wgetch(win);
-                        switch (key)
-                        {
-                        case KEY_UP:
-                            if (highlight > 0)
-                                highlight--;
-                            break;
-                        case KEY_DOWN:
-                            if (highlight < 4)
-                                highlight++;
-                            break;
-                        case 10:
-                            if (highlight == 0)
-                            {
-                                errbuff("game_loop returned: %d\n", game_loop(win, 1));
-                                ref = 1;
-                            }
-                            else if (highlight == 1)
-                            {
-                                errbuff("game_loop returned: %d\n", game_loop(win, 2));
-                                ref = 1;
-                            }
-                            else if (highlight == 2)
-                            {
-                                errbuff("game_loop returned: %d\n", game_loop(win, 3));
-                                ref = 1;
-                            }
-                            else if (highlight == 3)
-                            {
-                                errbuff("game_loop returned: %d\n", game_loop(win, 4));
-                                ref = 1;
-                            }
-                            wrefresh(win);
-                            break;
-                        }
-                    }
-                    delwin(win);
-                    refresh();
-                }
-                else
-                {
-                    clear();
-                    addstr("Cannot start colours\n");
-                    refresh();
-                }
-            }
+            addstr("Terminal too small\n");
+            refresh();
+            getch();
         }
         else
         {
-            addstr("Terminal not colour capable\n");
-            refresh();
+            if (start_color() == OK)
+            {
+                win = newwin(winlines, wincols, (maxlines / 2) - (winlines / 2) - (winlines % 2), (maxcols / 2) - (wincols / 2) - (wincols % 2));
+                keypad(win, true);
+
+                char menu[5][50] = {"1-LEVEL_1", "2-LEVEL_2", "3-LEVEL_3", "4-LEVEL_4", "5-BACK"};
+                int key, ref = 1;
+                int highlight = 0;
+
+                while (key != 10 || highlight != 4)
+                {
+                    if (ref)
+                    {
+                        mvwin(win, (maxlines / 2) - (winlines / 2) - (winlines % 2), (maxcols / 2) - (wincols / 2) - (wincols % 2));
+                        wresize(win, winlines, wincols);
+                        box(win, 0, 0);
+
+                        mvwprintw(win, 4, 17, "===================================");
+                        mvwprintw(win, 5, 17, "||   PLEASE SELECT GAME LEVEL    ||");
+                        mvwprintw(win, 6, 17, "===================================");
+                        ref = 0;
+                    }
+                    for (int i = 0; i < 5; i++)
+                    {
+                        if (i == highlight)
+                        {
+                            wattron(win, A_REVERSE);
+                        }
+                        mvwprintw(win, i + 9, 15, menu[i]);
+                        wattroff(win, A_REVERSE);
+                    }
+                    wrefresh(win);
+                    key = wgetch(win);
+                    switch (key)
+                    {
+                    case KEY_UP:
+                        if (highlight > 0)
+                            highlight--;
+                        break;
+                    case KEY_DOWN:
+                        if (highlight < 4)
+                            highlight++;
+                        break;
+                    case 10:
+                        if (highlight == 0)
+                        {
+                            errbuff("game_loop returned: %d\n", game_loop(win, 1));
+                            ref = 1;
+                        }
+                        else if (highlight == 1)
+                        {
+                            errbuff("game_loop returned: %d\n", game_loop(win, 2));
+                            ref = 1;
+                        }
+                        else if (highlight == 2)
+                        {
+                            errbuff("game_loop returned: %d\n", game_loop(win, 3));
+                            ref = 1;
+                        }
+                        else if (highlight == 3)
+                        {
+                            errbuff("game_loop returned: %d\n", game_loop(win, 4));
+                            ref = 1;
+                        }
+                        wrefresh(win);
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                clear();
+                addstr("Cannot start colours\n");
+                refresh();
+            }
         }
-        clear();
-        endwin();  
+    }
+    else
+    {
+        addstr("Terminal not colour capable\n");
+        refresh();
+    }
+    wclear(win);
 }

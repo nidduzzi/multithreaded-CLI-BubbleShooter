@@ -113,7 +113,7 @@ int main()
         endwin();
 
         pthread_mutex_destroy(&(errbuff_mutex));
-        if (errbuffer.buffer)
+        if (errbuffer.buffer != NULL)
         {
             printf("%s", errbuffer.buffer);
             free(errbuffer.buffer);
