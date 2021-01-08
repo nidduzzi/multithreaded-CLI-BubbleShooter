@@ -1230,3 +1230,104 @@ void targetUnloader(target_t *target)
         ptr1 = ptr2;
     }
 }
+
+void selectLevelscreen(WINDOW *win,int wincols,int winlines,int maxlines,int maxcols){
+        
+        //create window
+        if (has_colors())
+        {
+            if (maxlines < winlines || maxcols < wincols)
+            {
+                addstr("Terminal too small\n");
+                refresh();
+                getch();
+            }
+            else
+            {
+                if (start_color() == OK)
+                {
+                    win = newwin(winlines, wincols, (maxlines / 2) - (winlines / 2) - (winlines % 2), (maxcols / 2) - (wincols / 2) - (wincols % 2));
+                    keypad(win, true);
+
+                    char menu[5][50] = {"1-LEVEL_1", "2-LEVEL_2", "3-LEVEL_3","4-LEVEL_4","5-QUIT"};
+                    int key, ref = 1;
+                    int highlight = 0;
+
+                    while (key != 10 || highlight != 2)
+                    {
+                        if (ref)
+                        {
+                            mvwin(win, (maxlines / 2) - (winlines / 2) - (winlines % 2), (maxcols / 2) - (wincols / 2) - (wincols % 2));
+                            wresize(win, winlines, wincols);
+                            box(win, 0, 0);
+
+                            mvwprintw(win, 4, 17, "===================================");
+                            mvwprintw(win, 5, 17, "||   PLEASE SELECT GAME LEVEL    ||");
+                            mvwprintw(win, 6, 17, "===================================");
+                            ref = 0;
+                        }
+                        for (int i = 0; i < 5; i++)
+                        {
+                            if (i == highlight)
+                            {
+                                wattron(win, A_REVERSE);
+                            }
+                            mvwprintw(win, i + 9, 15, menu[i]);
+                            wattroff(win, A_REVERSE);
+                        }
+                        wrefresh(win);
+                        key = wgetch(win);
+                        switch (key)
+                        {
+                        case KEY_UP:
+                            if (highlight > 0)
+                                highlight--;
+                            break;
+                        case KEY_DOWN:
+                            if (highlight < 4)
+                                highlight++;
+                            break;
+                        case 10:
+                            if (highlight == 0)
+                            {
+                                errbuff("game_loop returned: %d\n", game_loop(win, 1));
+                                ref = 1;
+                            }
+                            else if (highlight == 1)
+                            {
+                                errbuff("game_loop returned: %d\n", game_loop(win, 2));
+                                ref = 1;
+                            }
+                            else if (highlight == 2)
+                            {
+                                errbuff("game_loop returned: %d\n", game_loop(win, 3));
+                                ref = 1;
+                            }
+                            else if (highlight == 3)
+                            {
+                                errbuff("game_loop returned: %d\n", game_loop(win, 4));
+                                ref = 1;
+                            }
+                            wrefresh(win);
+                            break;
+                        }
+                    }
+                    delwin(win);
+                    refresh();
+                }
+                else
+                {
+                    clear();
+                    addstr("Cannot start colours\n");
+                    refresh();
+                }
+            }
+        }
+        else
+        {
+            addstr("Terminal not colour capable\n");
+            refresh();
+        }
+        clear();
+        endwin();  
+}

@@ -159,6 +159,7 @@ int bounce(double *x, double *m, double *c, double minY, double maxY);
 int game_loop(WINDOW *win, int level);
 void spriteUnloader(sprite_t *sprite);
 void targetUnloader(target_t *target);
+void selectLevelscreen(WINDOW *win,int wincols,int winlines,int maxlines,int maxcols);
 // ...
 
 #endif

@@ -84,8 +84,10 @@ int main()
                             }
                             else if (highlight == 1)
                             {
-                                mvwaddstr(win, 20, 23, "Sorry! No game there yet...");
+                                // belum berfungsi
+                                selectLevelscreen(win,wincols,winlines,maxlines,maxcols);
                                 ref = 1;
+                                //mvwaddstr(win, 20, 23, "Sorry! No game there yet...");
                             }
                             wrefresh(win);
                             break;
