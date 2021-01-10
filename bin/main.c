@@ -1,5 +1,6 @@
 #include "lib.h"
-
+errorbuffer_t errbuffer; // Global variable for buffering printf
+pthread_mutex_t errbuff_mutex;
 int main()
 {
     setlocale(LC_ALL, "");

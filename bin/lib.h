@@ -82,29 +82,34 @@ typedef struct errorbuffer_type
 typedef struct container_bubble_type
 {
     bubble_t container;
-    LIST_ENTRY(container_bubble_type) entries;
+    LIST_ENTRY(container_bubble_type)
+    entries;
 } cbubble_t;
 typedef struct container_voipq_type
 {
-    void * pointer;
-    TAILQ_ENTRY(container_voipq_type) entries;
+    void *pointer;
+    TAILQ_ENTRY(container_voipq_type)
+    entries;
 } cvoipq_t;
 
 typedef struct container_voipl_type
 {
-    void * pointer;
-    LIST_ENTRY(container_voipl_type) entries;
+    void *pointer;
+    LIST_ENTRY(container_voipl_type)
+    entries;
 } cvoipl_t;
 
 typedef struct container_input_type
 {
     int c;
-    TAILQ_ENTRY(container_input_type) entries;
+    TAILQ_ENTRY(container_input_type)
+    entries;
 } cinput_t;
 
 typedef struct target_type
 {
-    LIST_HEAD(bubble_list, container_bubble_type) bubbles;
+    LIST_HEAD(bubble_list, container_bubble_type)
+    bubbles;
     int num;
     double x;
     double y;
@@ -140,12 +145,13 @@ typedef struct game_object_type
     int draw_signaled;
     int input_signaled;
     int mechanics_signaled;
-    TAILQ_HEAD(input_queue_t, container_input_type) input_queue;
+    TAILQ_HEAD(input_queue_t, container_input_type)
+    input_queue;
     //...
 } game_o_t;
 
-errorbuffer_t errbuffer; // Global variable for buffering printf
-pthread_mutex_t errbuff_mutex;
+extern errorbuffer_t errbuffer; // Global variable for buffering printf
+extern pthread_mutex_t errbuff_mutex;
 
 int errbuff(const char *s, ...);
 int textLoader(char address[], wchar_t ***dest, int *maxcol, int *maxline);
@@ -160,7 +166,7 @@ int bounce(double *x, double *m, double *c, double minY, double maxY);
 int game_loop(WINDOW *win, int level);
 void spriteUnloader(sprite_t *sprite);
 void targetUnloader(target_t *target);
-void selectLevelscreen(WINDOW *win,int wincols,int winlines,int maxlines,int maxcols);
+void selectLevelscreen(WINDOW *win, int wincols, int winlines, int maxlines, int maxcols);
 // ...
 
 #endif
