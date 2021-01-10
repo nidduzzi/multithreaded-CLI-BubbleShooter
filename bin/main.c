@@ -6,7 +6,7 @@ int main()
     int retval = pthread_mutex_init(&(errbuff_mutex), NULL);
     if (retval)
     {
-        errbuff("Error: pthread_mutex_init(errbuff_mutex) in main() returned: %d\n", retval);
+        fprintf(stderr, "Error: pthread_mutex_init(errbuff_mutex) in main() returned: %d\n", retval);
     }
     else
     {
@@ -14,7 +14,6 @@ int main()
         noecho();
         cbreak();
         curs_set(0);
-        //addstr("Test ncurses");
 
         int wincols = 70, winlines = 30;
         int maxlines, maxcols;
@@ -84,10 +83,8 @@ int main()
                             }
                             else if (highlight == 1)
                             {
-                                // belum berfungsi
-                                selectLevelscreen(win,wincols,winlines,maxlines,maxcols);
+                                selectLevelscreen(win, wincols, winlines, maxlines, maxcols);
                                 ref = 1;
-                                //mvwaddstr(win, 20, 23, "Sorry! No game there yet...");
                             }
                             wrefresh(win);
                             break;
@@ -115,7 +112,7 @@ int main()
         pthread_mutex_destroy(&(errbuff_mutex));
         if (errbuffer.buffer != NULL)
         {
-            printf("%s", errbuffer.buffer);
+            fputs(errbuffer.buffer, stderr);
             free(errbuffer.buffer);
         }
     }

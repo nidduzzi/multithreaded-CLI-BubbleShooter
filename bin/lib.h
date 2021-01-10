@@ -69,16 +69,8 @@ typedef struct bubble_type
     double x;
     double y;
     bc_t color;
-    int modified;
+    int searched;
 } bubble_t;
-
-typedef struct textLoaderArgs_type
-{
-    char addr[30];
-    wchar_t ***dest;
-    int *maxcol;
-    int *maxline;
-} tLoaderArg_t;
 
 typedef struct errorbuffer_type
 {
@@ -87,13 +79,22 @@ typedef struct errorbuffer_type
     int num;
 } errorbuffer_t;
 
-static errorbuffer_t errbuffer; // Global variable for buffering printf
-
 typedef struct container_bubble_type
 {
     bubble_t container;
     LIST_ENTRY(container_bubble_type) entries;
 } cbubble_t;
+typedef struct container_voipq_type
+{
+    void * pointer;
+    TAILQ_ENTRY(container_voipq_type) entries;
+} cvoipq_t;
+
+typedef struct container_voipl_type
+{
+    void * pointer;
+    LIST_ENTRY(container_voipl_type) entries;
+} cvoipl_t;
 
 typedef struct container_input_type
 {
@@ -143,7 +144,8 @@ typedef struct game_object_type
     //...
 } game_o_t;
 
-static pthread_mutex_t errbuff_mutex;
+errorbuffer_t errbuffer; // Global variable for buffering printf
+pthread_mutex_t errbuff_mutex;
 
 int errbuff(const char *s, ...);
 int textLoader(char address[], wchar_t ***dest, int *maxcol, int *maxline);
