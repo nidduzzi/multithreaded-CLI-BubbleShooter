@@ -16,7 +16,7 @@
 #include <wchar.h>
 // #define PI 3.14159265
 
-typedef enum game_internal_state_t
+typedef enum game_internal_state_type
 {
     GAME_INIT,    // Initialize level assets(bg, level design, sprites, prng seed, etc)
     BULLET_READY, // Bullet has been initialized (color/type set) and waiting for player to aim and shoot bullet --> update state to BULLET_FIRED after player fires bullet
@@ -25,6 +25,14 @@ typedef enum game_internal_state_t
     GAME_END,
     GAME_ERROR
 } gameIs_t;
+
+typedef enum game_result_type
+{
+    GAME_QUIT,
+    GAME_FINISHED,
+    GAME_OVER,
+    GAME_RESULT_MAX
+} gr_t;
 
 typedef enum bubble_color_type
 {
@@ -126,7 +134,9 @@ typedef struct window_attributes_type
 
 typedef struct game_object_type
 {
+    long shots;
     gameIs_t state;
+    gr_t result;
     int score;
     la_t assets;
     b_t bullet;
@@ -147,7 +157,6 @@ typedef struct game_object_type
     int mechanics_signaled;
     TAILQ_HEAD(input_queue_t, container_input_type)
     input_queue;
-    //...
 } game_o_t;
 
 extern errorbuffer_t errbuffer; // Global variable for buffering printf
@@ -167,6 +176,5 @@ int game_loop(WINDOW *win, int level);
 void spriteUnloader(sprite_t *sprite);
 void targetUnloader(target_t *target);
 void selectLevelscreen(WINDOW *win, int wincols, int winlines, int maxlines, int maxcols);
-// ...
 
 #endif

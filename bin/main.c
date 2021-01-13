@@ -3,6 +3,7 @@ errorbuffer_t errbuffer; // Global variable for buffering printf
 pthread_mutex_t errbuff_mutex;
 int main()
 {
+    srand(time(NULL));
     setlocale(LC_ALL, "");
     int retval = pthread_mutex_init(&(errbuff_mutex), NULL);
     if (retval)

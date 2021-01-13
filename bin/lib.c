@@ -256,8 +256,8 @@ bubble_t *collide(wattr_t *wattr, target_t *targets, double m, double c, double 
         by = (((double)wattr->cols - 2) / 2) - (cbubbleptr->container.x);
         a = 1 + pow(m, 2);
         b = 2 * (m * c - m * by - bx);
-        constant = pow(by, 2) + pow(bx, 2) + pow(c, 2) - (2 * c * by);                                                         // Subtract radius squared to use constant
-        if ((atan(fabs((by - y) / (bx - x))) > ((atan(1.0) + acos(0.0)) / 2)) && (discriminant(a, b, constant - 16.0) >= 0.0)) //check for horizontal collision
+        constant = pow(by, 2) + pow(bx, 2) + pow(c, 2) - (2 * c * by);                                         // Subtract radius squared to use constant
+        if ((atan(fabs((by - y) / (bx - x))) > ((atan(0.5)))) && (discriminant(a, b, constant - 16.0) >= 0.0)) //check for horizontal collision
         {
             x1 = (-b + sqrt(discriminant(a, b, constant - 16.0))) / (2 * a);
             x2 = (-b - sqrt(discriminant(a, b, constant - 16.0))) / (2 * a);
@@ -310,26 +310,26 @@ int bounce(double *x, double *m, double *c, double minY, double maxY)
 void drawarrow(wattr_t *wattr, double angle, target_t *targets, sprite_t *sprite)
 {
     int touchTarget = 0, line = wattr->lines - 2, col = 1;
-    double x = 0.0, y = 0.0, m = tan(angle), c = 0.0, bx, by, leasterror, dotpos[8][2] = {{1.6, 0.5}, {0.4, 0.5}, {1.6, 0.7}, {1.6, 0.3}, {1.0, 0.7}, {1.0, 0.3}, {0.4, 0.7}, {0.4, 0.3}}, cerror;
+    double x = 0.0, y = 0.0, m = tan(angle), c = 0.0, bx, by, leasterror, dotpos[8][2] = {{1.6, 0.5}, {0.4, 0.5}, {1.6, 0.9}, {1.6, 0.1}, {1.0, 0.9}, {1.0, 0.1}, {0.4, 0.9}, {0.4, 0.1}}, cerror;
     int leasterroridx, i;
     while (!touchTarget)
     {
         // reflect the line if it touches the sides of the game box
         bounce(&x, &m, &c, -(((double)(wattr->cols - 2) / 2)), (((double)(wattr->cols - 2) / 2)));
         // calculate the next arrow segment column position on the next line
-        col = (int)floor(((double)wattr->cols / 2) - (y = lineEq(x, m, c)) + 0.00000000005 /*offset any potential floating point errors*/);
+        col = (int)round(((double)wattr->cols / 2.0) - (y = lineEq(x, m, c)) + 0.00000000005 /*offset any potential floating point errors*/);
         // check current distance to the targets
         if (line == 1 || collide(wattr, targets, m, c, x, y) != NULL)
             touchTarget = 1;
-        leasterroridx = 0;
-        for (i = 0, leasterror = MAXFLOAT; i < 8 && m != 0.0; ++i)
+
+        for (i = 0, leasterror = MAXFLOAT, leasterroridx = 0; i < 8 && m != 0.0; ++i)
         {
-            bx = ((dotpos[i][1] + floor(y)) + ((dotpos[i][0] + floor(x)) / m) - c) / (m + (1 / m)); /* Get the intersect coordinates */
-            by = lineEq(bx, m, c);
+            bx = ((dotpos[i][1] + round(y)) + ((dotpos[i][0] + x) / m) - c) / (m + (1 / m)); /* Get the intersect coordinates */
             if (bx < x + 2 && bx > x)
             {
+                by = lineEq(bx, m, c);
                 /* Calulate the distance of the braille dot from the line*/
-                if ((cerror = sqrt(pow(dotpos[i][0] + floor(x) - bx, 2) + pow(dotpos[i][1] + floor(y) - by, 2))) < leasterror)
+                if ((cerror = sqrt(pow(dotpos[i][0] + x - bx, 2) + pow(dotpos[i][1] + round(y) - by, 2))) < leasterror)
                 {
                     leasterror = cerror;
                     leasterroridx = i;
@@ -342,7 +342,6 @@ void drawarrow(wattr_t *wattr, double angle, target_t *targets, sprite_t *sprite
         {
             mvwprintw(wattr->win, line, col, "%lc", sprite->data[leasterroridx + 1][0]);
         }
-        bx = x, by = y;
         --line;
         x += 2;
     }
@@ -380,13 +379,15 @@ void *draw(void *args)
                     game->draw_signaled = 1;
                     wclear(game->wattr.win);
                     box(game->wattr.win, 0, 0);
+                    drawarrow(&(game->wattr), game->bullet.angle_deg, &(game->targets), &(game->assets.arrow));
                     LIST_FOREACH(cbubbleptr, &(game->targets.bubbles), entries)
                     {
                         drawbubble(&(game->wattr), cbubbleptr->container, game->assets.bubble);
                     }
-                    drawarrow(&(game->wattr), game->bullet.angle_deg, &(game->targets), &(game->assets.arrow));
                     drawbubble(&(game->wattr), (bubble_t){((game->wattr.cols - 2) / 2) - game->bullet.y, ((game->wattr.lines - 3) * 2) - game->bullet.x, game->bullet.color, 0}, game->assets.bubble);
+                    wattron(game->wattr.win, A_REVERSE);
                     mvwprintw(game->wattr.win, game->wattr.lines - 1, game->wattr.cols - 11, "%lf", game->bullet.angle_deg);
+                    wattroff(game->wattr.win, A_REVERSE);
                     wrefresh(game->wattr.win);
                 }
                 pthread_cond_destroy(&(game->draw_cv));
@@ -422,8 +423,10 @@ void *draw(void *args)
                         drawbubble(&(game->wattr), cbubbleptr->container, game->assets.bubble);
                     }
                     drawbubble(&(game->wattr), (bubble_t){((game->wattr.cols - 2) / 2) - game->bullet.y, ((game->wattr.lines - 3) * 2) - game->bullet.x, game->bullet.color, 0}, game->assets.bubble);
+                    wattron(game->wattr.win, A_REVERSE);
                     mvwprintw(game->wattr.win, game->wattr.lines - 1, 1, "%lf, %lf", game->bullet.y, game->bullet.x);
                     mvwprintw(game->wattr.win, game->wattr.lines - 1, game->wattr.cols - 11, "%lf", game->bullet.angle_deg);
+                    wattroff(game->wattr.win, A_REVERSE);
                     wrefresh(game->wattr.win);
                 }
                 pthread_cond_destroy(&(game->draw_cv));
@@ -447,9 +450,10 @@ void *draw(void *args)
                 {
                     drawbubble(&(game->wattr), cbubbleptr->container, game->assets.bubble);
                 }
-                // drawbubble(&(game->wattr), (bubble_t){((game->wattr.cols - 2) / 2) - game->bullet.y, ((game->wattr.lines - 3) * 2) - game->bullet.x, game->bullet.color, 0}, game->assets.bubble);
+                wattron(game->wattr.win, A_REVERSE);
                 mvwprintw(game->wattr.win, game->wattr.lines - 1, 1, "%lf, %lf", game->bullet.y, game->bullet.x);
                 mvwprintw(game->wattr.win, game->wattr.lines - 1, game->wattr.cols - 11, "%lf", game->bullet.angle_deg);
+                wattroff(game->wattr.win, A_REVERSE);
                 wrefresh(game->wattr.win);
                 wclear(game->wattr.win);
                 wrefresh(game->wattr.win);
@@ -505,7 +509,7 @@ void *input(void *args)
     game_o_t *game = (game_o_t *)args;
     int *retval = (int *)malloc(sizeof(int)), key;
     cinput_t *cinputptr;
-    // ! Vars for quit to menu in the middle of BULLET_FIRED
+    // TODO: Vars for quit to menu in the middle of BULLET_FIRED
     // struct timeval start, end;
     // gettimeofday(&start, NULL);
     nodelay(game->wattr.win, TRUE);
@@ -551,6 +555,7 @@ void *input(void *args)
                         pthread_cond_signal(&(game->mechanics_cv));
                         if ((key == (int)'q') || (key == (int)'Q'))
                         {
+                            game->result = GAME_QUIT;
                             break;
                         }
                     }
@@ -580,7 +585,7 @@ void *input(void *args)
         default:
             break;
         }
-        
+
         // TODO: Make exiting from bullet fired
         // ! exiting while bubble is moving is not yet working
         // {
@@ -603,28 +608,89 @@ void *input(void *args)
     return (void *)retval;
 }
 
+int findCluster(const cbubble_t *startBubble, TAILQ_HEAD(bubble_queue_t, container_voipq_type) * queueHead, const target_t *targets)
+{
+    int size = 0;
+    cbubble_t *cbptr1 = NULL;
+    cvoipq_t *cvqptr1 = NULL, *cvqptr2 = NULL;
+    cvqptr1 = malloc(sizeof(cvoipq_t));
+    cvqptr1->pointer = startBubble;
+    TAILQ_INSERT_TAIL(queueHead, cvqptr1, entries);
+    TAILQ_FOREACH(cvqptr1, queueHead, entries)
+    {
+        LIST_FOREACH(cbptr1, &(targets->bubbles), entries)
+        {
+            if ((cbptr1->container.color == startBubble->container.color) && !(cbptr1->container.searched))
+            {
+                // check if already in queue
+                int notin = 1;
+                TAILQ_FOREACH(cvqptr2, queueHead, entries)
+                {
+                    if (cbptr1 == cvqptr2->pointer)
+                    {
+                        notin = 0;
+                        break;
+                    }
+                }
+                if (notin)
+                {
+                    double bx = cbptr1->container.y;
+                    double by = cbptr1->container.x;
+                    double tmpx = ((cbubble_t *)(cvqptr1->pointer))->container.y;
+                    double tmpy = ((cbubble_t *)(cvqptr1->pointer))->container.x;
+                    if ((sqrt(pow(tmpx - bx, 2) + pow(tmpy - by, 2)) <= sqrt(20.0)))
+                    {
+                        cvqptr2 = malloc(sizeof(cvoipq_t));
+                        cvqptr2->pointer = cbptr1;
+                        TAILQ_INSERT_TAIL(queueHead, cvqptr2, entries);
+                    }
+                }
+            }
+        }
+        ++size;
+    }
+    if (startBubble->container.searched == 1)
+    {
+        cvqptr1 = TAILQ_FIRST(queueHead);
+        TAILQ_REMOVE(queueHead, cvqptr1, entries);
+        free(cvqptr1);
+        --size;
+    }
+    return size;
+}
+
+void unmarkSearched(TAILQ_HEAD(bubble_queue_t, container_voipq_type) * queueHead)
+{
+    cvoipq_t *cvqptr1 = NULL;
+    TAILQ_FOREACH(cvqptr1, queueHead, entries)
+    {
+        ((cbubble_t *)cvqptr1->pointer)->container.searched = 0;
+    }
+}
+
+void markSearched(TAILQ_HEAD(bubble_queue_t, container_voipq_type) * queueHead)
+{
+    cvoipq_t *cvqptr1 = NULL;
+    TAILQ_FOREACH(cvqptr1, queueHead, entries)
+    {
+        ((cbubble_t *)cvqptr1->pointer)->container.searched = 1;
+    }
+}
+
 void *mechanics(void *args)
 {
     // * thread variables
     game_o_t *game = (game_o_t *)args;
     int *retval = (int *)malloc(sizeof(int));
     *retval = 0;
-    // * Bullet variables
-    double angle_increment = 0.01;
-    double tmpx, tmpy, tmpc, tmpm;
-    game->bullet.speed = 5.0;
-    // * variables for handling input queue
-    cinput_t *cinputptr, *cinputptr1;
-    // * Timer variables
-    struct timeval start, end;
-    gettimeofday(&start, NULL);
     // * variables for handling targets, and their removal
     TAILQ_HEAD(bubble_queue_t, container_voipq_type)
     bubble_queue;
-    LIST_HEAD(delbubble_list_t, container_voipl_type)
-    delbubble_list;
     TAILQ_INIT(&(bubble_queue));
-    LIST_INIT(&(delbubble_list));
+    // * Timer variables
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
+
     *retval = pthread_mutex_lock(&(game->game_mutex));
     if (*retval)
     {
@@ -639,7 +705,15 @@ void *mechanics(void *args)
         case BULLET_READY:
         {
             // * do once
-            game->bullet.color = (bc_t)(1 + ((double)rand() / (double)RAND_MAX) * 8.0);
+            const static double angle_increment = 0.01;
+            // * variables for handling input queue
+            cinput_t *cinputptr = NULL, *cinputptr1 = NULL;
+            // * Bullet variables
+            game->bullet.speed = 5.0;
+            // game->bullet.color = (bc_t)(1 + ((double)rand() / (double)RAND_MAX) * 8.0);
+            // ! DEBUG
+            game->bullet.color = BUBBLE_WHITE;
+            // ! DEBUG
             game->bullet.angle_deg = 0.0;
             game->bullet.x = 0.0;
             game->bullet.y = 0.0;
@@ -780,10 +854,10 @@ void *mechanics(void *args)
                 pthread_cond_signal(&(game->draw_cv));
             pthread_mutex_lock(&(game->game_mutex));
             game->mechanics_state = BULLET_FIRED;
-            tmpx = game->bullet.x;
-            tmpy = game->bullet.y;
-            tmpm = tan(game->bullet.angle_deg);
-            tmpc = 0.0;
+            double tmpx = game->bullet.x;
+            double tmpy = game->bullet.y;
+            double tmpm = tan(game->bullet.angle_deg);
+            double tmpc = 0.0;
             gettimeofday(&start, NULL);
             *retval = pthread_cond_wait(&(game->mechanics_cv), &(game->game_mutex));
             if (*retval)
@@ -805,7 +879,7 @@ void *mechanics(void *args)
                 {
                     bubble_t *collidedBubble = NULL;
                     game->mechanics_signaled = 1;
-                    while ((game->state == BULLET_FIRED) && (tmpx < (double)((game->wattr.lines - 3) * 2)) && (tmpx >= 0.0))
+                    while ((game->state == BULLET_FIRED) && (tmpx < (double)((game->wattr.lines - 4) * 2)) && (tmpx >= 0.0))
                     {
                         // * Move bullet along the line
                         gettimeofday(&end, NULL);
@@ -828,38 +902,55 @@ void *mechanics(void *args)
                                 {
                                     double bx = (((double)game->wattr.lines - 3) * 2) - collidedBubble->y;
                                     double by = (((double)game->wattr.cols - 2) / 2) - collidedBubble->x;
-                                    double halfangle = ((atan(1.0) + acos(0.0)) / 2);
-                                    double theta = atan2((tmpy - by), (tmpx - bx));
-                                    if ((theta >= 0.0) && (theta < halfangle))
+                                    double halfangle = (atan(0.5));
+                                    if (tmpy - by == 0.0)
                                     {
-                                        game->bullet.x = bx + 4.0;
-                                        game->bullet.y = by + 2.0;
+                                        double chance = ((double)rand()) / ((double)RAND_MAX);
+                                        if (chance < 0.5)
+                                        {
+                                            game->bullet.x = bx - 4.0;
+                                            game->bullet.y = by - 2.0;
+                                        }
+                                        else
+                                        {
+                                            game->bullet.x = bx - 4.0;
+                                            game->bullet.y = by + 2.0;
+                                        }
                                     }
-                                    else if ((theta >= halfangle) && (theta < (M_PI - halfangle)))
+                                    else
                                     {
-                                        game->bullet.x = bx;
-                                        game->bullet.y = by + 4.0;
-                                    }
-                                    else if ((theta >= (M_PI - halfangle)) && (theta < M_PI))
-                                    {
-                                        game->bullet.x = bx - 4.0;
-                                        game->bullet.y = by + 2.0;
-                                    }
-                                    else if ((theta >= -M_PI) && (theta < (-M_PI + halfangle)))
-                                    {
-                                        game->bullet.x = bx - 4.0;
-                                        game->bullet.y = by - 2.0;
-                                    }
-                                    else if ((theta >= (-M_PI + halfangle)) && (theta < (-halfangle)))
-                                    {
-                                        game->bullet.x = bx;
-                                        game->bullet.y = by - 4.0;
-                                    }
-                                    else if ((theta < 0.0) && (theta >= (-halfangle)))
-                                    {
+                                        double theta = atan2((tmpy - by), (tmpx - bx));
+                                        if ((theta >= 0.0) && (theta < halfangle))
+                                        {
+                                            game->bullet.x = bx + 4.0;
+                                            game->bullet.y = by + 2.0;
+                                        }
+                                        else if ((theta >= halfangle) && (theta < (M_PI - halfangle)))
+                                        {
+                                            game->bullet.x = bx;
+                                            game->bullet.y = by + 4.0;
+                                        }
+                                        else if ((theta >= (M_PI - halfangle)) && (theta < M_PI))
+                                        {
+                                            game->bullet.x = bx - 4.0;
+                                            game->bullet.y = by + 2.0;
+                                        }
+                                        else if ((theta >= -M_PI) && (theta < (-M_PI + halfangle)))
+                                        {
+                                            game->bullet.x = bx - 4.0;
+                                            game->bullet.y = by - 2.0;
+                                        }
+                                        else if ((theta >= (-M_PI + halfangle)) && (theta < (-halfangle)))
+                                        {
+                                            game->bullet.x = bx;
+                                            game->bullet.y = by - 4.0;
+                                        }
+                                        else if ((theta < 0.0) && (theta >= (-halfangle)))
+                                        {
 
-                                        game->bullet.x = bx + 4.0;
-                                        game->bullet.y = by - 2.0;
+                                            game->bullet.x = bx + 4.0;
+                                            game->bullet.y = by - 2.0;
+                                        }
                                     }
                                     // unlock to draw last update
                                     *retval = pthread_mutex_unlock(&(game->game_mutex));
@@ -934,49 +1025,90 @@ void *mechanics(void *args)
             pthread_cond_wait(&(game->mechanics_cv), &(game->game_mutex));
             if (game->state == BULLET_HIT)
             {
-                int num = 0;
-                cbubble_t *ptr = NULL;
+                TAILQ_HEAD(bubble_queue_t, container_voipq_type)
+                tmp_queue;
+                TAILQ_INIT(&(tmp_queue));
                 cvoipq_t *ptrqueue = NULL;
-                TAILQ_FOREACH(ptrqueue, &bubble_queue, entries)
-                {
-                    LIST_FOREACH(ptr, &(game->targets.bubbles), entries)
-                    {
-                        if ((ptr->container.color == ((cbubble_t *)(ptrqueue->pointer))->container.color) && !(ptr->container.searched))
-                        {
-                            double bx = (((double)game->wattr.lines - 3) * 2) - ptr->container.y;
-                            double by = (((double)game->wattr.cols - 2) / 2) - ptr->container.x;
-                            tmpx = (((double)game->wattr.lines - 3) * 2) - ((cbubble_t *)(ptrqueue->pointer))->container.y;
-                            tmpy = (((double)game->wattr.cols - 2) / 2) - ((cbubble_t *)(ptrqueue->pointer))->container.x;
-                            // double halfangle = ((atan(1.0) + acos(0.0)) / 2);
-                            // double theta = atan((tmpy - by)/(tmpx - bx));
-                            // if ((theta > -halfangle) && (theta < halfangle))
-                            // {
-                            //     game->bullet.x = bx + 4.0;
-                            //     game->bullet.y = by + 2.0;
-                            // }
-                            // else if ((theta > halfangle) || (theta < -halfangle))
-                            // {
-                            //     game->bullet.x = bx;
-                            //     game->bullet.y = by + 4.0;
-                            // }
-                            if (sqrt(pow(tmpx - bx, 2) + pow(tmpy - by, 2)) <= sqrt(20.0))
-                            {
-                                cvoipq_t *tmpcvoipq = (cvoipq_t *)malloc(sizeof(cvoipq_t));
-                                tmpcvoipq->pointer = ptr;
-                                ptr->container.searched = 1;
-                                TAILQ_INSERT_TAIL(&bubble_queue, tmpcvoipq, entries);
-                            }
-                        }
-                    }
-                    ++num;
-                }
+                int num = findCluster((cbubble_t *)(TAILQ_FIRST(&bubble_queue)->pointer), &tmp_queue, &(game->targets)) + 1;
+                markSearched(&tmp_queue);
+                TAILQ_CONCAT(&bubble_queue, &tmp_queue, entries);
                 if (num >= 3)
                 {
+                    // search for hanging clusters here
+                    cbubble_t *ptr;
+                    TAILQ_FOREACH(ptrqueue, &bubble_queue, entries)
+                    {
+                        LIST_FOREACH(ptr, &(game->targets.bubbles), entries)
+                        {
+                            if (!(ptr->container.searched))
+                            {
+                                double bx = (((double)game->wattr.lines - 3) * 2) - ptr->container.y;
+                                double by = (((double)game->wattr.cols - 2) / 2) - ptr->container.x;
+                                double tmpx = (((double)game->wattr.lines - 3) * 2) - ((cbubble_t *)(ptrqueue->pointer))->container.y;
+                                double tmpy = (((double)game->wattr.cols - 2) / 2) - ((cbubble_t *)(ptrqueue->pointer))->container.x;
+                                // check if this bubble is connected to a hanging cluster
+                                if ((sqrt(pow(tmpx - bx, 2) + pow(tmpy - by, 2)) <= sqrt(20.0)) && (tmpx > bx))
+                                {
+                                    int hangingTrue = 1;
+                                    int clusterSize = findCluster(ptr, &tmp_queue, &(game->targets));
+                                    if (clusterSize > 0)
+                                    {
+                                        markSearched(&tmp_queue);
+                                        cvoipq_t *cvqptr1 = NULL;
+                                        TAILQ_FOREACH(cvqptr1, &tmp_queue, entries)
+                                        {
+                                            // check if the cluster is connected to the ceiling
+                                            if (((cbubble_t *)cvqptr1->pointer)->container.y == 2)
+                                            {
+                                                hangingTrue = 0;
+                                            }
+                                            // check if the cluster is connected to another cluster
+                                            if (hangingTrue)
+                                            {
+                                                cbubble_t *cbptr1 = NULL;
+                                                LIST_FOREACH(cbptr1, &(game->targets.bubbles), entries)
+                                                {
+                                                    if (!(cbptr1->container.searched))
+                                                    {
+                                                        bx = (((double)game->wattr.lines - 3) * 2) - cbptr1->container.y;
+                                                        by = (((double)game->wattr.cols - 2) / 2) - cbptr1->container.x;
+                                                        tmpx = (((double)game->wattr.lines - 3) * 2) - ((cbubble_t *)(cvqptr1->pointer))->container.y;
+                                                        tmpy = (((double)game->wattr.cols - 2) / 2) - ((cbubble_t *)(cvqptr1->pointer))->container.x;
+                                                        if ((sqrt(pow(tmpx - bx, 2) + pow(tmpy - by, 2)) <= sqrt(20.0)))
+                                                        {
+                                                            hangingTrue = 0;
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            if (!hangingTrue)
+                                                break;
+                                        }
+                                        if (!hangingTrue)
+                                        {
+                                            // if this isn't a hanging cluster unmark it so that other clusters can check against this
+                                            unmarkSearched(&tmp_queue);
+                                        }
+                                        else
+                                        {
+                                            // if this is a hanging cluster then add it to the list of bubbles to be deleted
+                                            TAILQ_CONCAT(&bubble_queue, &tmp_queue, entries);
+                                            num += clusterSize;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        ++num;
+                    }
+                    // delete clusters the bullet hit and any hanging clusters
                     TAILQ_FOREACH(ptrqueue, &bubble_queue, entries)
                     {
                         LIST_REMOVE((cbubble_t *)(ptrqueue->pointer), entries);
                         free(ptrqueue->pointer);
                     }
+                    game->score += ((num - 1) * 250 + 200);
                 }
                 else
                 {
@@ -996,10 +1128,21 @@ void *mechanics(void *args)
                 if (LIST_EMPTY(&(game->targets.bubbles)))
                 {
                     game->state = GAME_END;
+                    game->result = GAME_FINISHED;
                 }
                 else
                 {
-                    game->state = BULLET_READY;
+                    double bx = (((double)game->wattr.lines - 3) * 2) - game->targets.bubbles.lh_first->container.y;
+                    double by = (((double)game->wattr.cols - 2) / 2) - game->targets.bubbles.lh_first->container.x;
+                    if (sqrt(pow(bx, 2) + pow(by, 2)) <= sqrt(20.1))
+                    {
+                        game->state = GAME_END;
+                        game->result = GAME_OVER;
+                    }
+                    else
+                    {
+                        game->state = BULLET_READY;
+                    }
                 }
             }
             pthread_cond_signal(&(game->draw_cv));
@@ -1055,9 +1198,12 @@ int game_loop(WINDOW *win, int level)
                 game.draw_state = GAME_INIT;
                 game.input_state = GAME_INIT;
                 game.mechanics_state = GAME_INIT;
+                game.result = GAME_QUIT;
                 game.input_signaled = 0;
                 game.mechanics_signaled = 0;
                 game.draw_signaled = 0;
+                game.shots = 0;
+                game.score = 0;
                 // initialize window attributes
                 game.wattr.win = win;
                 game.wattr.cols = (game.assets.layout.maxcol / 2 + game.assets.layout.maxcol % 2) * game.assets.bubble.maxcol + 2;
@@ -1159,9 +1305,7 @@ int game_loop(WINDOW *win, int level)
             }
             else
             {
-
                 errbuff("Failed to load assets. loadAssetsFromFile() returned: %d\n", retval);
-
                 game.state = GAME_ERROR;
             }
             break;
@@ -1208,20 +1352,21 @@ int game_loop(WINDOW *win, int level)
         }
         getmaxyx(stdscr, newmaxlines, newmaxcols);
         // redraw the window if the terminal changed size
-        if ((newmaxlines != game.wattr.maxlines || newmaxcols != game.wattr.maxcols) && pthread_mutex_trylock(&(game.game_mutex)))
+        if ((newmaxlines != game.wattr.maxlines || newmaxcols != game.wattr.maxcols))
         {
+            pthread_mutex_lock(&(game.game_mutex));
             game.wattr.maxlines = newmaxlines;
             game.wattr.maxcols = newmaxcols;
             wclear(win);
             wresize(win, game.wattr.lines, game.wattr.cols);
-            mvwin(win, (game.wattr.maxlines / 2) - (game.wattr.lines / 2) - (game.wattr.lines % 2), (game.wattr.maxcols / 2) - (game.wattr.cols / 2) - (game.wattr.cols % 2));
+            mvwin(win, (game.wattr.maxlines / 2) - (game.wattr.lines / 2), (game.wattr.maxcols / 2) - (game.wattr.cols / 2));
             box(win, 0, 0);
             wrefresh(win);
             pthread_mutex_unlock(&(game.game_mutex));
         }
     }
     int *threadret;
-    // TODO: Take care of post game stuff (Score, completion, free dynamic vars(sprites (DONE), Targets(DONE),etc) etc)
+    // TODO: Take care of post game stuff (Score, shots, free dynamic vars(sprites (DONE), Targets(DONE),etc) etc)
     if (game.state == GAME_ERROR)
     {
         pthread_cancel(game.input_thread);
@@ -1256,11 +1401,29 @@ int game_loop(WINDOW *win, int level)
         // clear the window and refresh
         wclear(win);
         wrefresh(win);
+        if (game.result != GAME_QUIT)
+        {
+            // Print score here
+            box(win, 0, 0);
+            mvwprintw(win, 5, 1, "Score: %d", game.score);
+            mvwprintw(win, 6, 1, "Number of shots: %d", game.shots);
+            mvwprintw(win, 8, 1, "Press Q to exit to menu...");
+            wrefresh(win);
+            nodelay(win, FALSE);
+            int c = wgetch(win);
+            while ((c != (int)'Q') && (c != (int)'q'))
+            {
+                c = wgetch(win);
+            }
+            wclear(win);
+            wrefresh(win);
+        }
     }
     spriteUnloader(&(game.assets.arrow));
     spriteUnloader(&(game.assets.bubble));
     spriteUnloader(&(game.assets.layout));
     targetUnloader(&(game.targets));
+    clear();
     return retval;
 }
 
