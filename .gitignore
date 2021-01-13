@@ -142,5 +142,5 @@ $RECYCLE.BIN/
 .vscode/
 *.code-workspace
 main
-main.sh
+*.sh
 bin/main
