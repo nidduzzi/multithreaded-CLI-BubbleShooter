@@ -710,10 +710,10 @@ void *mechanics(void *args)
             cinput_t *cinputptr = NULL, *cinputptr1 = NULL;
             // * Bullet variables
             game->bullet.speed = 5.0;
-            // game->bullet.color = (bc_t)(1 + ((double)rand() / (double)RAND_MAX) * 8.0);
-            // ! DEBUG
-            game->bullet.color = BUBBLE_WHITE;
-            // ! DEBUG
+            game->bullet.color = (bc_t)(1 + ((double)rand() / (double)RAND_MAX) * 8.0);
+            // // ! DEBUG
+            // game->bullet.color = BUBBLE_WHITE;
+            // // ! DEBUG
             game->bullet.angle_deg = 0.0;
             game->bullet.x = 0.0;
             game->bullet.y = 0.0;
