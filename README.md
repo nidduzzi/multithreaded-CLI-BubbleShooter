@@ -8,10 +8,17 @@ copy the repo using:
 then move to the bin folder using:  
 `cd multithreaded-CLI-BubbleShooter/bin`  
 compile using:  
-`gcc -g -Wall *.c -o main.sh -lpthread -lncursesw -lm`  
+Debug       : `gcc -g -Wall *.c -o main -lpthread -lncursesw -ltinfo -lm`  
+Release     : `gcc -static *.c -o main -lpthread -lncursesw -ltinfo -lm`  
 run using:  
 `./main`  
 
+# Controls  
+Left/Right Arrow keys to change bubble direction  
+Enter to shoot  
+Q to return to main menu  
+Up/Down Arrow keys to select in menu  
+Enter To confirm selection  
 # Game process
 
 MENU
