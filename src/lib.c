@@ -379,6 +379,9 @@ void *draw(void *args)
                     game->draw_signaled = 1;
                     wclear(game->wattr.win);
                     box(game->wattr.win, 0, 0);
+                    wattron(game->wattr.win, A_REVERSE);
+                    mvwprintw(game->wattr.win, 0, 1, "Score: %d", game->score);
+                    wattroff(game->wattr.win, A_REVERSE);
                     drawarrow(&(game->wattr), game->bullet.angle_deg, &(game->targets), &(game->assets.arrow));
                     LIST_FOREACH(cbubbleptr, &(game->targets.bubbles), entries)
                     {
@@ -418,6 +421,9 @@ void *draw(void *args)
                     game->draw_signaled = 1;
                     wclear(game->wattr.win);
                     box(game->wattr.win, 0, 0);
+                    wattron(game->wattr.win, A_REVERSE);
+                    mvwprintw(game->wattr.win, 0, 1, "Score: %d", game->score);
+                    wattroff(game->wattr.win, A_REVERSE);
                     LIST_FOREACH(cbubbleptr, &(game->targets.bubbles), entries)
                     {
                         drawbubble(&(game->wattr), cbubbleptr->container, game->assets.bubble);
@@ -446,6 +452,9 @@ void *draw(void *args)
             {
                 wclear(game->wattr.win);
                 box(game->wattr.win, 0, 0);
+                wattron(game->wattr.win, A_REVERSE);
+                mvwprintw(game->wattr.win, 0, 1, "Score: %d", game->score);
+                wattroff(game->wattr.win, A_REVERSE);
                 LIST_FOREACH(cbubbleptr, &(game->targets.bubbles), entries)
                 {
                     drawbubble(&(game->wattr), cbubbleptr->container, game->assets.bubble);
@@ -471,6 +480,9 @@ void *draw(void *args)
                 game->draw_signaled = 1;
                 wclear(game->wattr.win);
                 box(game->wattr.win, 0, 0);
+                wattron(game->wattr.win, A_REVERSE);
+                mvwprintw(game->wattr.win, 0, 1, "Score: %d", game->score);
+                wattroff(game->wattr.win, A_REVERSE);
                 LIST_FOREACH(cbubbleptr, &(game->targets.bubbles), entries)
                 {
                     drawbubble(&(game->wattr), cbubbleptr->container, game->assets.bubble);
@@ -675,6 +687,64 @@ void markSearched(TAILQ_HEAD(bubble_queue_t, container_voipq_type) * queueHead)
     {
         ((cbubble_t *)cvqptr1->pointer)->container.searched = 1;
     }
+}
+
+int pathToRoof(const cbubble_t *startBubble, const target_t *targets)
+{
+    int path = 0;
+    if (startBubble != NULL)
+    {
+        TAILQ_HEAD(bubble_queue_t, container_voipq_type)
+        searchQueue;
+        TAILQ_INIT(&searchQueue);
+        cvoipq_t *cvqptr1 = malloc(sizeof(cvoipq_t)), *cvqptr2 = NULL;
+        cvqptr1->pointer = startBubble;
+        TAILQ_FOREACH(cvqptr1, &searchQueue, entries)
+        {
+            if (((cbubble_t *)cvqptr1->pointer)->container.y == 2.0)
+            {
+                path = 1;
+                break;
+            }
+            else
+            {
+                cbubble_t *cbptr1 = NULL;
+                LIST_FOREACH(cbptr1, &(targets->bubbles), entries)
+                {
+                    int notin = 1;
+                    TAILQ_FOREACH(cvqptr2, &searchQueue, entries)
+                    {
+                        if (cbptr1 == cvqptr2->pointer)
+                        {
+                            notin = 0;
+                            break;
+                        }
+                    }
+                    if (notin && !(cbptr1->container.searched))
+                    {
+                        double bx = cbptr1->container.y;
+                        double by = cbptr1->container.x;
+                        double tmpx = ((cbubble_t *)(cvqptr1->pointer))->container.y;
+                        double tmpy = ((cbubble_t *)(cvqptr1->pointer))->container.x;
+                        if ((sqrt(pow(tmpx - bx, 2) + pow(tmpy - by, 2)) <= sqrt(20.0)))
+                        {
+                            cvqptr2 = malloc(sizeof(cvoipq_t));
+                            cvqptr2->pointer = cbptr1;
+                            TAILQ_INSERT_TAIL(&searchQueue, cvqptr2, entries);
+                        }
+                    }
+                }
+            }
+        }
+        cvoipq_t *ptr1 = TAILQ_FIRST(&searchQueue), *ptr2;
+        while (ptr1 != NULL)
+        {
+            ptr2 = TAILQ_NEXT(ptr1, entries);
+            free(ptr1);
+            ptr1 = ptr2;
+        }
+    }
+    return path;
 }
 
 void *mechanics(void *args)
@@ -1058,32 +1128,11 @@ void *mechanics(void *args)
                                         TAILQ_FOREACH(cvqptr1, &tmp_queue, entries)
                                         {
                                             // check if the cluster is connected to the ceiling
-                                            if (((cbubble_t *)cvqptr1->pointer)->container.y == 2)
+                                            if(pathToRoof(cvqptr1->pointer, &(game->targets)))
                                             {
-                                                hangingTrue = 0;
-                                            }
-                                            // check if the cluster is connected to another cluster
-                                            if (hangingTrue)
-                                            {
-                                                cbubble_t *cbptr1 = NULL;
-                                                LIST_FOREACH(cbptr1, &(game->targets.bubbles), entries)
-                                                {
-                                                    if (!(cbptr1->container.searched))
-                                                    {
-                                                        bx = (((double)game->wattr.lines - 3) * 2) - cbptr1->container.y;
-                                                        by = (((double)game->wattr.cols - 2) / 2) - cbptr1->container.x;
-                                                        tmpx = (((double)game->wattr.lines - 3) * 2) - ((cbubble_t *)(cvqptr1->pointer))->container.y;
-                                                        tmpy = (((double)game->wattr.cols - 2) / 2) - ((cbubble_t *)(cvqptr1->pointer))->container.x;
-                                                        if ((sqrt(pow(tmpx - bx, 2) + pow(tmpy - by, 2)) <= sqrt(20.0)))
-                                                        {
-                                                            hangingTrue = 0;
-                                                            break;
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            if (!hangingTrue)
+                                                hangingTrue = 1;
                                                 break;
+                                            }
                                         }
                                         if (!hangingTrue)
                                         {
