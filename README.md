@@ -12,15 +12,18 @@ Members:
 
 *Ini adalah repo game bubble shooter multithreaded di terminal yang menggunakan art ascii*
 
-copy the repo using:  
+Copy the repo using:  
 `gh repo clone nidduzzi/multithreaded-CLI-BubbleShooter`  
-then move to the bin folder using:  
+`git clone https://github.com/nidduzzi/multithreaded-CLI-BubbleShooter.git`  
+Then move to the bin folder using:  
 `cd multithreaded-CLI-BubbleShooter/src`  
-compile using:  
+
+Compile using:  
 Debug       : `gcc -g -Wall main.c lib.c -o main -lpthread -lncursesw -ltinfo -lm`  
 Release     : `gcc -static main.c lib.c -o cli-bubbleshooter -lpthread -lncursesw -ltinfo -lm`  
 Run using   : `./main`  
-**Self compiled binaries will need to follow the [file structure](#filestructure) refrenced in Release**  
+
+**Self compiled binaries will need to follow the [file structure](#filestructure) refrenced in Releases**  
 
 # Controls  
 Left/Right Arrow keys to change bubble direction  
