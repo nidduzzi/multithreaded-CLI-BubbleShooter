@@ -144,3 +144,6 @@ $RECYCLE.BIN/
 main
 *.sh
 bin/main
+autom4te.cache/
+autoscan.log
+config*
