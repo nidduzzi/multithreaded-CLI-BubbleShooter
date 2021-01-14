@@ -20,8 +20,9 @@ Then move to the bin folder using:
 
 Compile using:  
 Debug       : `gcc -g -Wall main.c lib.c -o main -lpthread -lncursesw -ltinfo -lm`  
-Release     : `gcc -static main.c lib.c -o cli-bubbleshooter -lpthread -lncursesw -ltinfo -lm`  
 Run using   : `./main`  
+Release     : `gcc -static main.c lib.c -o cli-bubbleshooter -lpthread -lncursesw -ltinfo -lm`  
+Run using   : `./cli-bubbleshooter`  
 
 **Self compiled binaries will need to follow the [file structure](#filestructure) refrenced in Releases**  
 
