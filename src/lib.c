@@ -699,6 +699,7 @@ int pathToRoof(const cbubble_t *startBubble, const target_t *targets)
         TAILQ_INIT(&searchQueue);
         cvoipq_t *cvqptr1 = malloc(sizeof(cvoipq_t)), *cvqptr2 = NULL;
         cvqptr1->pointer = startBubble;
+        TAILQ_INSERT_HEAD(&searchQueue, cvqptr1, entries);
         TAILQ_FOREACH(cvqptr1, &searchQueue, entries)
         {
             if (((cbubble_t *)cvqptr1->pointer)->container.y == 2.0)
@@ -1117,7 +1118,7 @@ void *mechanics(void *args)
                                 double tmpx = (((double)game->wattr.lines - 3) * 2) - ((cbubble_t *)(ptrqueue->pointer))->container.y;
                                 double tmpy = (((double)game->wattr.cols - 2) / 2) - ((cbubble_t *)(ptrqueue->pointer))->container.x;
                                 // check if this bubble is connected to a hanging cluster
-                                if ((sqrt(pow(tmpx - bx, 2) + pow(tmpy - by, 2)) <= sqrt(20.0)) && (tmpx > bx))
+                                if ((sqrt(pow(tmpx - bx, 2) + pow(tmpy - by, 2)) <= sqrt(20.0)) && (bx <= tmpx))
                                 {
                                     int hangingTrue = 1;
                                     int clusterSize = findCluster(ptr, &tmp_queue, &(game->targets));
@@ -1130,7 +1131,7 @@ void *mechanics(void *args)
                                             // check if the cluster is connected to the ceiling
                                             if(pathToRoof(cvqptr1->pointer, &(game->targets)))
                                             {
-                                                hangingTrue = 1;
+                                                hangingTrue = 0;
                                                 break;
                                             }
                                         }
