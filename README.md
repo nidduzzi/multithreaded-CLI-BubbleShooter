@@ -24,6 +24,8 @@ Run using   : `./main`
 Release     : `gcc -static main.c lib.c -o cli-bubbleshooter -lpthread -lncursesw -ltinfo -lm`  
 Run using   : `./cli-bubbleshooter`  
 
+If you are having trouble compiling try the [android branch](https://github.com/nidduzzi/multithreaded-CLI-BubbleShooter/tree/android)
+
 **Self compiled binaries will need to follow the [file structure](#filestructure) refrenced in Releases**  
 
 # Controls  
