@@ -147,3 +147,4 @@ bin/main
 autom4te.cache/
 autoscan.log
 config*
+*.gz
