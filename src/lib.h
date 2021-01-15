@@ -12,9 +12,8 @@
 #include <locale.h>
 #include <errno.h>
 #include <math.h>
-#include <sys/queue.h>
+#include "queue.h"
 #include <wchar.h>
-// #define PI 3.14159265
 
 typedef enum game_internal_state_type
 {
