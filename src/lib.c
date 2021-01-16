@@ -1419,9 +1419,11 @@ int game_loop(WINDOW *win, int level)
     // TODO: Take care of post game stuff (Score, shots, free dynamic vars(sprites (DONE), Targets(DONE),etc) etc)
     if (game.state == GAME_ERROR)
     {
-        // pthread_cancel(game.input_thread);
-        // pthread_cancel(game.draw_thread);
-        // pthread_cancel(game.mechanics_thread);
+        #ifndef __BIONIC__
+        pthread_cancel(game.input_thread);
+        pthread_cancel(game.draw_thread);
+        pthread_cancel(game.mechanics_thread);
+        #endif
     }
     else if (game.state == GAME_END)
     {
