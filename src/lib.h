@@ -15,6 +15,10 @@
 #include "queue.h"
 #include <wchar.h>
 
+#ifndef MAXFLOAT
+#define MAXFLOAT 3.40282347e+38F
+#endif
+
 typedef enum game_internal_state_type
 {
     GAME_INIT,    // Initialize level assets(bg, level design, sprites, prng seed, etc)
